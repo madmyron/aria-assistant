@@ -10,13 +10,22 @@ When Michael asks about weather, sports scores, or directions, the data will be 
 
 const AVATAR = "/aria_photo.jpg";
 
-async function getWeather(city = "Roanoke,TX") {
+async function getWeather(city = "Roanoke") {
   try {
+    const geoRes = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`
+    );
+    const geoData = await geoRes.json();
+    const loc = geoData.results?.[0];
+    if (!loc) return "Couldn't find that location.";
+
     const res = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${WEATHER_KEY}&units=imperial`
+      `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current_weather=true&temperature_unit=fahrenheit`
     );
     const data = await res.json();
-    return `Weather in ${data.name}: ${Math.round(data.main.temp)}°F, ${data.weather[0].description}, humidity ${data.main.humidity}%`;
+    const temp = Math.round(data.current_weather.temperature);
+    const wind = Math.round(data.current_weather.windspeed);
+    return `Weather in ${loc.name}: ${temp}°F, wind ${wind} mph`;
   } catch(e) {
     return "Couldn't fetch weather right now.";
   }
