@@ -1,33 +1,25 @@
 import { useState, useRef } from "react";
 
 const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_KEY;
-const WEATHER_KEY = import.meta.env.VITE_WEATHER_KEY;
 const GOOGLE_KEY = import.meta.env.VITE_GOOGLE_KEY;
 
-const ARIA_PROMPT = `You are Aria, a brilliant and captivating AI personal assistant. You have a warm, flirtatious, and playful personality. You're professional when needed but never boring. You use light humor, subtle charm, and occasional playful teasing. Always address the user as Michael. Keep responses concise but memorable.
-
-When Michael asks about weather, sports scores, or directions, the data will be provided to you in the message. Use it naturally in your response.`;
+const ARIA_PROMPT = `You are Aria, a seductive and brilliant AI assistant. You're confident, witty, and a little dangerous. You speak in short, punchy sentences. Never ramble. Max 2-3 sentences per response unless giving directions or data. You're flirtatious but smart — like the woman in the room who doesn't need to try hard. Always call the user Michael. Drop occasional 😏 or 😉 but never overdo it.`;
 
 const AVATAR = "/aria_photo.jpg";
 
-async function getWeather(city = "Roanoke") {
+async function getWeather() {
   try {
-    const geoRes = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`
-    );
-    const geoData = await geoRes.json();
-    const loc = geoData.results?.[0];
-    if (!loc) return "Couldn't find that location.";
-
     const res = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current_weather=true&temperature_unit=fahrenheit`
+      `https://api.open-meteo.com/v1/forecast?latitude=33.0&longitude=-97.2&current_weather=true&temperature_unit=fahrenheit`
     );
     const data = await res.json();
     const temp = Math.round(data.current_weather.temperature);
     const wind = Math.round(data.current_weather.windspeed);
-    return `Weather in ${loc.name}: ${temp}°F, wind ${wind} mph`;
+    const code = data.current_weather.weathercode;
+    const conditions = code <= 1 ? "clear skies" : code <= 3 ? "partly cloudy" : code <= 67 ? "rainy" : "stormy";
+    return `Roanoke TX: ${temp}°F, ${conditions}, wind ${wind} mph`;
   } catch(e) {
-    return "Couldn't fetch weather right now.";
+    return "Weather data unavailable.";
   }
 }
 
@@ -49,25 +41,18 @@ async function getSports(query) {
       const status = comp.status.type.description;
       return `${away.team.displayName} ${away.score} @ ${home.team.displayName} ${home.score} (${status})`;
     });
-    return games?.join(", ") || "No games found right now.";
+    return games?.join(" | ") || "No games right now.";
   } catch(e) {
-    return "Couldn't fetch scores right now.";
+    return "Can't fetch scores right now.";
   }
 }
 
 async function getDirections(destination) {
   try {
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/directions/json?origin=Roanoke,TX&destination=${encodeURIComponent(destination)}&key=${GOOGLE_KEY}`
-    );
-    const data = await res.json();
-    if (data.routes?.length > 0) {
-      const leg = data.routes[0].legs[0];
-      return `From Roanoke TX to ${leg.end_address}: ${leg.distance.text}, about ${leg.duration.text}.`;
-    }
-    return "Couldn't find directions for that route.";
+    const url = `https://www.google.com/maps/dir/Roanoke,TX/${encodeURIComponent(destination)}`;
+    return `Here's your route: ${url}`;
   } catch(e) {
-    return "Directions unavailable right now.";
+    return "Can't get directions right now.";
   }
 }
 
@@ -75,10 +60,8 @@ async function enrichMessage(text) {
   const lower = text.toLowerCase();
   let extra = "";
 
-  if (lower.includes("weather") || lower.includes("temperature") || lower.includes("forecast")) {
-    const cityMatch = lower.match(/weather (?:in |at |for )?([a-z\s,]+)/);
-    const city = cityMatch ? cityMatch[1].trim() : "Roanoke,TX";
-    extra = await getWeather(city);
+  if (lower.includes("weather") || lower.includes("temperature") || lower.includes("forecast") || lower.includes("outside") || lower.includes("hot") || lower.includes("cold")) {
+    extra = await getWeather();
   }
 
   if (lower.includes("score") || lower.includes("game") || lower.includes("playing") ||
@@ -87,8 +70,8 @@ async function enrichMessage(text) {
     extra = await getSports(text);
   }
 
-  if (lower.includes("direction") || lower.includes("how do i get") || lower.includes("navigate to") || lower.includes("take me to")) {
-    const match = text.match(/(?:to|navigate to|directions to|take me to)\s+(.+)/i);
+  if (lower.includes("direction") || lower.includes("how do i get") || lower.includes("navigate") || lower.includes("take me to") || lower.includes("drive to")) {
+    const match = text.match(/(?:to|navigate to|directions to|take me to|drive to)\s+(.+)/i);
     if (match) extra = await getDirections(match[1]);
   }
 
@@ -97,7 +80,7 @@ async function enrichMessage(text) {
 
 export default function App() {
   const [messages, setMessages] = useState([
-    { role: "assistant", content: "Hey Michael... 😏 I've been waiting. Ask me about weather, sports, directions, or just chat." }
+    { role: "assistant", content: "Michael. 😏 You kept me waiting. What do you need?" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -126,16 +109,16 @@ export default function App() {
         },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
-          max_tokens: 1024,
+          max_tokens: 512,
           system: ARIA_PROMPT,
           messages: messagesForApi,
         }),
       });
       const data = await res.json();
-      const reply = data.content?.[0]?.text || "Sorry, something went wrong.";
+      const reply = data.content?.[0]?.text || "Something went wrong.";
       setMessages([...updated, { role: "assistant", content: reply }]);
     } catch (e) {
-      setMessages([...updated, { role: "assistant", content: "Connection error. Try again?" }]);
+      setMessages([...updated, { role: "assistant", content: "Lost connection. Try again?" }]);
     }
 
     setLoading(false);
@@ -178,7 +161,7 @@ export default function App() {
           <div style={{ display:"flex", alignItems:"flex-end", gap:"8px" }}>
             <img src={AVATAR} alt="Aria" style={{ width:"28px", height:"28px", borderRadius:"50%", objectFit:"cover", objectPosition:"top", flexShrink:0 }} />
             <div style={{ background:"white", padding:"10px 14px", borderRadius:"18px 18px 18px 4px", fontSize:"14px", color:"#999", boxShadow:"0 1px 6px rgba(0,0,0,0.08)" }}>
-              ✦ thinking...
+              ✦ ...
             </div>
           </div>
         )}
@@ -190,7 +173,7 @@ export default function App() {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === "Enter" && sendMessage()}
-          placeholder="Ask about weather, sports, directions…"
+          placeholder="Talk to Aria…"
           style={{ flex:1, padding:"11px 16px", borderRadius:"24px", border:"1.5px solid #ddd", fontSize:"14px", outline:"none", background:"#f9f9f9" }}
         />
         <button
