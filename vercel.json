@@ -1,21 +1,9 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "client/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "client/dist"
-      }
-    }
-  ],
+  "buildCommand": "cd client && npm install && npm run build",
+  "outputDirectory": "client/dist",
+  "framework": null,
   "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/client/$1"
-    }
-  ],
-  "env": {
-    "VITE_API_BASE": "https://your-backend-url-here"
-  }
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
