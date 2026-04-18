@@ -573,7 +573,21 @@ app.delete('/api/memory', (_req, res) => {
   res.json({ success: true });
 });
 
+process.on('exit', (code) => {
+  console.log(`Process exiting with code: ${code}`);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 app.listen(PORT, () => {
   console.log(`Aria backend running on http://localhost:${PORT}`);
   console.log(`SerpApi key loaded: ${process.env.SERPAPI_API_KEY ? 'yes' : 'no'}`);
+}).on('error', (err) => {
+  console.error('Server listen error:', err);
 });
