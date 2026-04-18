@@ -256,34 +256,43 @@ function getMapsLink(destination) {
   return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=driving`;
 }
 
-function detectIntent(text) {
-  const lower = text.toLowerCase();
-  const intents = {
-    weather: /weather|temp|forecast|hot|cold|outside/.test(lower),
-    sports: /score|game|cowboys|mavs|stars|rangers|mets|nfl|nba|mlb|nhl|football|basketball|hockey/.test(lower),
-    sms: /\btext\b|send a message|\bsms\b/.test(lower),
-    calendarCreate: /\b(schedule|set up|create|add|book|make)\b/.test(lower) && /\b(meeting|call|appointment|event|lunch|dinner|chat)\b|\b(today|tomorrow|next|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/.test(lower),
-    calendarQuery: /\b(my calendar|my schedule|what do i have|my appointments|my events)\b/.test(lower),
-    gmail: /email|gmail|inbox|unread mail|unread email/.test(lower),
-    list: /\b(shopping list|grocery list|groceries|to-do|todo list|my list|add to (?:my )?list|remind me to (?:buy|get|pick up)|pick up\b|what'?s on my|show my list|read (?:my |back )?(?:shopping|todo|grocery) list|check off|remove from (?:my )?list|clear (?:my )?(?:shopping|todo|grocery|) ?list|add .+ to (?:my )?(shopping|todo|grocery)|from my list)\b/.test(lower),
-    reminder: /\b(remind me(?! to (?:buy|get|pick up))|set a reminder|reminder for|don't let me forget|alert me|notify me|remind me at|remind me on|remind me tomorrow|remind me every)\b/.test(lower),
-    search: /search|look up|find|what is|when does|who is|latest/.test(lower),
-    directions: /direction|navigate|take me|drive to|how do i get/.test(lower),
-  };
+  function detectIntent(text) {
+    const lower = text.toLowerCase();
+    const intents = {
+      weather: /weather|temp|forecast|hot|cold|outside/.test(lower),
+      sports: /score|game|cowboys|mavs|stars|rangers|mets|nfl|nba|mlb|nhl|football|basketball|hockey/.test(lower),
+      sms: /\btext\b|send a message|\bsms\b/.test(lower),
+      calendarCreate: /\b(schedule|set up|create|add|book|make)\b/.test(lower) && /\b(meeting|call|appointment|event|lunch|dinner|chat)\b|\b(today|tomorrow|next|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/.test(lower),
+      calendarQuery: /\b(my calendar|my schedule|what do i have|my appointments|my events)\b/.test(lower),
+      gmail: /email|gmail|inbox|unread mail|unread email/.test(lower),
+      list: /\b(shopping list|grocery list|groceries|to-do|todo list|my list|add to (?:my )?list|remind me to (?:buy|get|pick up)|pick up\b|what'?s on my|show my list|read (?:my |back )?(?:shopping|todo|grocery) list|check off|remove from (?:my )?list|clear (?:my )?(?:shopping|todo|grocery|) ?list|add .+ to (?:my )?(shopping|todo|grocery)|from my list)\b/.test(lower),
+      reminder: /\b(remind me(?! to (?:buy|get|pick up))|set a reminder|reminder for|don't let me forget|alert me|notify me|remind me at|remind me on|remind me tomorrow|remind me every)\b/.test(lower),
+      directions: /direction|navigate|take me|drive to|how do i get/.test(lower),
+      search: false, // Default to false, will be set as fallback
+    };
 
-  if (intents.calendarCreate) {
-    intents.calendarQuery = false;
-  }
-  if (intents.reminder) {
-    intents.calendarCreate = false;
-    intents.list = false;
-  }
-  if (intents.list) {
-    intents.search = false;
-  }
+    if (intents.calendarCreate) {
+      intents.calendarQuery = false;
+    }
+    if (intents.reminder) {
+      intents.calendarCreate = false;
+      intents.list = false;
+    }
+    if (intents.list) {
+      // List intent is a specific action, we don't need search
+    } else {
+      // If no other specific action/query intent is matched, trigger search as fallback
+      const hasOtherIntent = intents.weather || intents.sports || intents.sms || 
+                              intents.calendarCreate || intents.calendarQuery || 
+                              intents.gmail || intents.reminder || intents.directions;
+      
+      if (!hasOtherIntent || /search|look up|find|what is|when does|who is|latest/.test(lower)) {
+        intents.search = true;
+      }
+    }
 
-  return intents;
-}
+    return intents;
+  }
 
 function formatContextBlock(label, value) {
   if (!value) return "";

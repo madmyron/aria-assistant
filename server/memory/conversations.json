@@ -26,5 +26,13 @@
   {
     "role": "assistant",
     "content": "Lost connection. (Error: invalid_grant)"
+  },
+  {
+    "role": "user",
+    "content": "can you check the internet and let me know when the nytex public skate is today?"
+  },
+  {
+    "role": "assistant",
+    "content": "I can't browse the internet in real-time, Michael. You'll have to check NYTEX's website or give them a call yourself. 😘"
   }
 ]
