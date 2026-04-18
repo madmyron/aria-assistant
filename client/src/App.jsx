@@ -267,7 +267,7 @@ function detectIntent(text) {
     gmail: /email|gmail|inbox|unread mail|unread email/.test(lower),
     list: /\b(shopping list|grocery list|groceries|to-do|todo list|my list|add to (?:my )?list|remind me to (?:buy|get|pick up)|pick up\b|what'?s on my|show my list|read (?:my |back )?(?:shopping|todo|grocery) list|check off|remove from (?:my )?list|clear (?:my )?(?:shopping|todo|grocery|) ?list|add .+ to (?:my )?(shopping|todo|grocery)|from my list)\b/.test(lower),
     reminder: /\b(remind me(?! to (?:buy|get|pick up))|set a reminder|reminder for|don't let me forget|alert me|notify me|remind me at|remind me on|remind me tomorrow|remind me every)\b/.test(lower),
-    search: /search|look up|find out|what('s| is) the|latest|news|google\b|recipe|how (do|to)|practice (time|schedule)|school|camp|hours|when (does|do|is|are)|where (is|are|can)|who (is|are)|tell me about|information (on|about)|price of|cost of|review/.test(lower),
+    search: /search|look up|find|what is|when does|who is|latest/.test(lower),
     directions: /direction|navigate|take me|drive to|how do i get/.test(lower),
   };
 
@@ -480,15 +480,17 @@ export default function App() {
     }
 
     if (intents.search) {
-      const search = await fetchJson(`/api/search?query=${encodeURIComponent(text)}`);
-      if (search.configured === false) {
-        blocks.push(formatContextBlock("Search", search.message));
-      } else {
-        const results = search.results || [];
-        const formatted = results.length
-          ? results.map((item, i) => `${i + 1}. ${item.title}: ${item.snippet}`).join("\n")
-          : "No search results found.";
-        blocks.push(formatContextBlock("Search Results (summarize these conversationally in 1-2 sentences)", formatted));
+      try {
+        const search = await fetchJson(`/api/search?query=${encodeURIComponent(text)}`);
+        if (search.configured === false || !search.results || search.results.length === 0) {
+          blocks.push(formatContextBlock("Search", "Search failed or no results found. Start your response with 'I can't search right now, but here's what I know...' and answer from your own knowledge."));
+        } else {
+          const results = search.results;
+          const formatted = results.map((item, i) => `${i + 1}. Title: ${item.title}\nSnippet: ${item.snippet}\nLink: ${item.link}`).join("\n\n");
+          blocks.push(formatContextBlock("Search Results (summarize these conversationally in 1-2 sentences)", formatted));
+        }
+      } catch (error) {
+        blocks.push(formatContextBlock("Search", "Search API call failed. Start your response with 'I can't search right now, but here's what I know...' and answer from your own knowledge."));
       }
     }
 

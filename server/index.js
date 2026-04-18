@@ -520,7 +520,7 @@ app.get('/api/search', async (req, res) => {
     }
 
     const braveKey = process.env.BRAVE_SEARCH_API_KEY || process.env.BRAVE_API_KEY;
-    const serpKey = process.env.SERPAPI_API_KEY;
+    const serpKey = process.env.SERPAPI_KEY;
 
     if (braveKey) {
       const response = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=3`, {
@@ -542,11 +542,11 @@ app.get('/api/search', async (req, res) => {
       if (data?.error) {
         return res.status(400).json({ error: data.error });
       }
-      const results = (data?.organic_results || []).slice(0, 5).map((item) => ({
-        title: item.title,
-        url: item.link,
-        snippet: item.snippet || item.rich_snippet?.top?.detected_extensions?.description || ''
-      }));
+       const results = (data?.organic_results || []).slice(0, 5).map((item) => ({
+         title: item.title,
+         link: item.link,
+         snippet: item.snippet || item.rich_snippet?.top?.detected_extensions?.description || ''
+       }));
       return res.json({ configured: true, provider: 'serpapi', results });
     }
 
