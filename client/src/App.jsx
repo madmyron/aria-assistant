@@ -263,7 +263,7 @@ function detectIntent(text) {
     sports: /score|game|cowboys|mavs|stars|rangers|mets|nfl|nba|mlb|nhl|football|basketball|hockey/.test(lower),
     sms: /\btext\b|send a message|\bsms\b/.test(lower),
     calendarCreate: /\b(schedule|set up|create|add|book|make)\b/.test(lower) && /\b(meeting|call|appointment|event|lunch|dinner|chat)\b|\b(today|tomorrow|next|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/.test(lower),
-    calendarQuery: /\b(what do i have|my schedule|calendar|today|tomorrow|this week|next week|free|busy)\b/.test(lower),
+    calendarQuery: /\b(my calendar|my schedule|what do i have|my appointments|my events)\b/.test(lower),
     gmail: /email|gmail|inbox|unread mail|unread email/.test(lower),
     list: /\b(shopping list|grocery list|groceries|to-do|todo list|my list|add to (?:my )?list|remind me to (?:buy|get|pick up)|pick up\b|what'?s on my|show my list|read (?:my |back )?(?:shopping|todo|grocery) list|check off|remove from (?:my )?list|clear (?:my )?(?:shopping|todo|grocery|) ?list|add .+ to (?:my )?(shopping|todo|grocery)|from my list)\b/.test(lower),
     reminder: /\b(remind me(?! to (?:buy|get|pick up))|set a reminder|reminder for|don't let me forget|alert me|notify me|remind me at|remind me on|remind me tomorrow|remind me every)\b/.test(lower),
@@ -461,29 +461,45 @@ export default function App() {
     const blocks = [];
 
     if (intents.weather) {
-      const weather = await fetchJson("/api/weather");
-      blocks.push(formatContextBlock("Weather", `${weather.temperatureF}°F, ${weather.condition}, wind ${weather.windSpeedMph} mph in Roanoke TX.`));
+      try {
+        const weather = await fetchJson("/api/weather");
+        blocks.push(formatContextBlock("Weather", `${weather.temperatureF}°F, ${weather.condition}, wind ${weather.windSpeedMph} mph in Roanoke TX.`));
+      } catch (e) {
+        console.error("Weather context failed:", e);
+      }
     }
 
     if (intents.sports) {
-      const sports = await fetchJson(`/api/sports?query=${encodeURIComponent(text)}`);
-      blocks.push(formatContextBlock("Sports", (sports.games || []).join(" | ") || "No games found."));
+      try {
+        const sports = await fetchJson(`/api/sports?query=${encodeURIComponent(text)}`);
+        blocks.push(formatContextBlock("Sports", (sports.games || []).join(" | ") || "No games found."));
+      } catch (e) {
+        console.error("Sports context failed:", e);
+      }
     }
 
     if (intents.calendarQuery) {
-      const calendar = await fetchJson("/api/calendar");
-      const formatted = calendar.configured === false
-        ? calendar.message
-        : (calendar.events || []).map((event) => `${event.account ? `[${event.account}] ` : ''}${event.title} — ${event.when}`).join(" | ") || "No events in the next 7 days.";
-      blocks.push(formatContextBlock("Calendar", formatted));
+      try {
+        const calendar = await fetchJson("/api/calendar");
+        const formatted = calendar.configured === false
+          ? calendar.message
+          : (calendar.events || []).map((event) => `${event.account ? `[${event.account}] ` : ''}${event.title} — ${event.when}`).join(" | ") || "No events in the next 7 days.";
+        blocks.push(formatContextBlock("Calendar", formatted));
+      } catch (e) {
+        console.error("Calendar context failed:", e);
+      }
     }
 
     if (intents.gmail) {
-      const gmail = await fetchJson("/api/gmail");
-      const formatted = gmail.configured === false
-        ? gmail.message
-        : (gmail.emails || []).map((email) => `${email.account ? `[${email.account}] ` : ''}${email.sender} — ${email.subject} — ${email.snippet}`).join(" | ") || "No unread emails.";
-      blocks.push(formatContextBlock("Gmail", formatted));
+      try {
+        const gmail = await fetchJson("/api/gmail");
+        const formatted = gmail.configured === false
+          ? gmail.message
+          : (gmail.emails || []).map((email) => `${email.account ? `[${email.account}] ` : ''}${email.sender} — ${email.subject} — ${email.snippet}`).join(" | ") || "No unread emails.";
+        blocks.push(formatContextBlock("Gmail", formatted));
+      } catch (e) {
+        console.error("Gmail context failed:", e);
+      }
     }
 
     if (intents.search) {

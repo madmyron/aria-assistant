@@ -18,5 +18,13 @@
   {
     "role": "assistant",
     "content": "Lost connection."
+  },
+  {
+    "role": "user",
+    "content": "when is public skate at nytex today"
+  },
+  {
+    "role": "assistant",
+    "content": "Lost connection. (Error: invalid_grant)"
   }
 ]
