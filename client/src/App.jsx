@@ -839,13 +839,16 @@ export default function App() {
           </div>
         )}
         <div style={{ display:"flex", gap:"8px", alignItems:"center" }}>
-          <input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && sendMessage()}
-            placeholder={`Talk to ${assistantName}…`}
-            style={{ flex:1, padding:"11px 16px", borderRadius:"24px", border:"1.5px solid #ddd", fontSize:"14px", outline:"none", background:"#f9f9f9", color:"#1a1a1a" }}
-          />
+          <div style={{ flex:1, position:"relative" }} data-darkreader-inline-color="">
+            <input
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && sendMessage()}
+              placeholder={`Talk to ${assistantName}…`}
+              data-darkreader-inline-color=""
+              style={{ width:"100%", boxSizing:"border-box", padding:"11px 16px", borderRadius:"24px", border:"1.5px solid #ddd", fontSize:"14px", outline:"none", background:"#e8e8e8", color:"#111111", WebkitTextFillColor:"#111111", opacity:1, caretColor:"#111111" }}
+            />
+          </div>
           {speechSupported && (
             <button
               onClick={() => {

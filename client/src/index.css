@@ -25,3 +25,27 @@ body {
   background: #ffffff;
   color: #1a1a1a;
 }
+
+input,
+textarea {
+  color: #111111 !important;
+  -webkit-text-fill-color: #111111 !important;
+  opacity: 1 !important;
+  caret-color: #111111 !important;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #111111 !important;
+  -webkit-box-shadow: 0 0 0 30px #e8e8e8 inset !important;
+  caret-color: #111111 !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #999999;
+  -webkit-text-fill-color: #999999;
+  opacity: 1;
+}
