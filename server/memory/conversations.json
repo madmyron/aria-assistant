@@ -1,0 +1,14 @@
+[
+  {
+    "role": "assistant",
+    "content": "Michael. 😏 You kept me waiting. What do you need?"
+  },
+  {
+    "role": "user",
+    "content": "When does public skate start at nytex today"
+  },
+  {
+    "role": "assistant",
+    "content": "Lost connection."
+  }
+]

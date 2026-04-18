@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ellyAvatar from "./assets/elly-clutch.avif";
 
-const API_BASE = import.meta.env.VITE_API_BASE || `http://${window.location.hostname}:3001`;
+const API_BASE = import.meta.env.VITE_API_BASE || `http://localhost:3001`;
 const AVATAR = ellyAvatar;
 const DEFAULT_NAME = "Aria";
 
@@ -309,6 +309,7 @@ function getDeviceAccessHint() {
 }
 
 export default function App() {
+  console.log(`Aria Frontend connecting to API at: ${API_BASE}`);
   const [assistantName, setAssistantName] = useState(() => getStoredAssistantName());
   const [draftName, setDraftName] = useState(() => getStoredAssistantName());
   const [settingsOpen, setSettingsOpen] = useState(false);
