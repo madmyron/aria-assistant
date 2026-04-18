@@ -442,12 +442,18 @@ export default function App() {
   }, []);
 
   async function fetchJson(path, options) {
-    const res = await fetch(`${API_BASE}${path}`, options);
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data?.error || "Request failed.");
+    console.log(`Fetching: ${API_BASE}${path}`);
+    try {
+      const res = await fetch(`${API_BASE}${path}`, options);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || `Request failed with status ${res.status}`);
+      }
+      return data;
+    } catch (err) {
+      console.error(`Fetch error for ${path}:`, err);
+      throw err;
     }
-    return data;
   }
 
   async function buildContext(text) {
@@ -701,8 +707,9 @@ export default function App() {
 
       setMessages([...updated, { role: "assistant", content: chat.reply || "Something went wrong." }]);
       if (renamePending) setRenamePending(false);
-    } catch (_error) {
-      setMessages([...updated, { role: "assistant", content: "Lost connection." }]);
+    } catch (error) {
+      console.error("Chat API Error:", error);
+      setMessages([...updated, { role: "assistant", content: `Lost connection. (Error: ${error.message})` }]);
     }
 
     setLoading(false);
