@@ -272,7 +272,7 @@ app.post('/api/calendar', async (req, res) => {
       return res.status(400).json({ error: 'title and date are required' });
     }
 
-    const start = new Date(`${date}T${time}:00`);
+    const start = new Date(`${date}T${time}:00-05:00`);
     if (Number.isNaN(start.getTime())) {
       return res.status(400).json({ error: 'Invalid date or time.' });
     }
@@ -293,6 +293,7 @@ app.post('/api/calendar', async (req, res) => {
       event: { ...formatCalendarEvent(response.data), account: resolveGoogleAccount(account) }
     });
   } catch (error) {
+    console.error('Calendar create error:', error);
     res.status(500).json({ error: error.message || 'Calendar create failed' });
   }
 });

@@ -126,8 +126,10 @@ function formatIsoDate(date) {
 function parseCalendarEventRequest(text) {
   const cleanedText = text.replace(/\b(please|pls)\b/gi, '').trim();
   const titleText = cleanedText
+    .replace(/\b(can you|could you|i need to|i want to)\b/gi, '')
     .replace(/\b(schedule|set up|create|add|book|make)\b/gi, '')
     .replace(/\b(on|for|at)\b.*$/gi, '')
+    .replace(/^\s*[a-z]+\s+/g, '')
     .trim();
 
   const title = titleText || 'Meeting';
@@ -340,6 +342,15 @@ export default function App() {
     return blocks.filter(Boolean).join("\n");
   }
 
+  function saveAssistantName() {
+    const trimmed = draftName.trim();
+    if (!trimmed) return;
+    localStorage.setItem("aria_name", trimmed);
+    setAssistantName(trimmed);
+    setRenamePending(true);
+    setSettingsOpen(false);
+  }
+
   function clearConversation() {
     const initialMessage = { role: "assistant", content: "Michael. 😏 Fresh start. What do you need?" };
     setMessages([initialMessage]);
@@ -395,6 +406,12 @@ export default function App() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(event)
         });
+
+        if (!calendar?.success) {
+          setMessages([...updated, { role: "assistant", content: `Michael, something went wrong — the event was not created. Error: ${calendar?.error || 'Unknown error'}` }]);
+          setLoading(false);
+          return;
+        }
 
         setMessages([...updated, { role: "assistant", content: `Done, Michael. I created "${calendar.event.title}" on ${calendar.event.when}.` }]);
         setLoading(false);
@@ -523,7 +540,7 @@ export default function App() {
         {messages.map((m, i) => (
           <div key={i} style={{ display:"flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", alignItems:"flex-end", gap:"8px" }}>
             {m.role === "assistant" && (
-              <img src={AVATAR} alt={assistantName} style={{ width:"28px", height:"28px", borderRadius:"50%", objectFit:"cover", objectPosition:"top", flexShrink:0 }} />
+              <img src={AVATAR} alt={assistantName} style={{ width:"28px", height:"28px", borderRadius:"50%", objectFit:"cover", objectPosition:"top", flexShrink:0, transition:"transform 0.3s ease", transform: loading && i === messages.length - 1 ? "scale(1.3)" : "scale(1)" }} />
             )}
             <div style={{
               maxWidth:"78%", padding:"10px 14px",
@@ -540,7 +557,7 @@ export default function App() {
         ))}
         {loading && (
           <div style={{ display:"flex", alignItems:"flex-end", gap:"8px" }}>
-            <img src={AVATAR} alt={assistantName} style={{ width:"28px", height:"28px", borderRadius:"50%", objectFit:"cover", objectPosition:"top", flexShrink:0 }} />
+            <img src={AVATAR} alt={assistantName} style={{ width:"28px", height:"28px", borderRadius:"50%", objectFit:"cover", objectPosition:"top", flexShrink:0, transition:"transform 0.3s ease", transform:"scale(1.3)" }} />
             <div style={{ background:"white", padding:"10px 14px", borderRadius:"18px 18px 18px 4px", fontSize:"14px", color:"#999" }}>✦ ...</div>
           </div>
         )}
