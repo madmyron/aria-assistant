@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ellyAvatar from "./assets/elly-clutch.avif";
 
-const API_BASE = import.meta.env.VITE_API_BASE || `http://localhost:3001`;
+const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'https://aria-assistant-production-6730.up.railway.app'
 const AVATAR = ellyAvatar;
 const DEFAULT_NAME = "Aria";
 
