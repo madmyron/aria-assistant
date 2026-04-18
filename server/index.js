@@ -520,7 +520,7 @@ app.get('/api/search', async (req, res) => {
     }
 
     const braveKey = process.env.BRAVE_SEARCH_API_KEY || process.env.BRAVE_API_KEY;
-    const serpKey = process.env.SERPAPI_KEY;
+    const serpKey = process.env.SERPAPI_API_KEY;
 
     if (braveKey) {
       const response = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=3`, {
@@ -552,6 +552,7 @@ app.get('/api/search', async (req, res) => {
 
     res.json({ configured: false, results: [], message: 'Search is not configured.' });
   } catch (error) {
+    console.error('Search endpoint error:', error);
     res.status(500).json({ error: error.message || 'Search failed' });
   }
 });
@@ -574,4 +575,5 @@ app.delete('/api/memory', (_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Aria backend running on http://localhost:${PORT}`);
+  console.log(`SerpApi key loaded: ${process.env.SERPAPI_API_KEY ? 'yes' : 'no'}`);
 });
