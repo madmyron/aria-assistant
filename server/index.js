@@ -6,10 +6,45 @@ import twilio from 'twilio';
 import { google } from 'googleapis';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { randomUUID } from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+
+const MEMORY_DIR = path.resolve(__dirname, 'memory');
+const MEMORY_FILE = path.join(MEMORY_DIR, 'conversations.json');
+try { mkdirSync(MEMORY_DIR, { recursive: true }); } catch {}
+
+const DATA_DIR = path.resolve(__dirname, 'data');
+const LISTS_FILE = path.join(DATA_DIR, 'lists.json');
+const REMINDERS_FILE = path.join(DATA_DIR, 'reminders.json');
+try { mkdirSync(DATA_DIR, { recursive: true }); } catch {}
+
+function readLists() {
+  try { return JSON.parse(readFileSync(LISTS_FILE, 'utf8')); } catch { return {}; }
+}
+
+function writeLists(lists) {
+  writeFileSync(LISTS_FILE, JSON.stringify(lists, null, 2));
+}
+
+function readReminders() {
+  try { return JSON.parse(readFileSync(REMINDERS_FILE, 'utf8')); } catch { return []; }
+}
+
+function writeReminders(reminders) {
+  writeFileSync(REMINDERS_FILE, JSON.stringify(reminders, null, 2));
+}
+
+function readMemory() {
+  try { return JSON.parse(readFileSync(MEMORY_FILE, 'utf8')); } catch { return []; }
+}
+
+function writeMemory(messages) {
+  writeFileSync(MEMORY_FILE, JSON.stringify(messages, null, 2));
+}
 
 const app = express();
 app.use(cors());
@@ -120,6 +155,88 @@ function formatCalendarEvent(event) {
 function getHeader(headers = [], name) {
   return headers.find((header) => header.name?.toLowerCase() === name.toLowerCase())?.value || '';
 }
+
+app.get('/api/lists', (_req, res) => {
+  res.json(readLists());
+});
+
+app.post('/api/lists', (req, res) => {
+  const listName = String(req.body?.listName || 'todo').toLowerCase().trim();
+  const item = String(req.body?.item || '').trim();
+  if (!item) return res.status(400).json({ error: 'item is required' });
+  const lists = readLists();
+  if (!lists[listName]) lists[listName] = [];
+  lists[listName].push({ text: item, done: false, addedAt: new Date().toISOString() });
+  writeLists(lists);
+  res.json({ success: true, listName, lists });
+});
+
+app.delete('/api/lists/:listName/:index', (req, res) => {
+  const { listName } = req.params;
+  const idx = Number(req.params.index);
+  const lists = readLists();
+  if (!lists[listName] || idx < 0 || idx >= lists[listName].length) {
+    return res.status(404).json({ error: 'Item not found' });
+  }
+  lists[listName].splice(idx, 1);
+  writeLists(lists);
+  res.json({ success: true, listName, lists });
+});
+
+app.patch('/api/lists/:listName/:index', (req, res) => {
+  const { listName } = req.params;
+  const idx = Number(req.params.index);
+  const lists = readLists();
+  if (!lists[listName] || idx < 0 || idx >= lists[listName].length) {
+    return res.status(404).json({ error: 'Item not found' });
+  }
+  const current = lists[listName][idx].done;
+  lists[listName][idx].done = req.body?.done !== undefined ? Boolean(req.body.done) : !current;
+  writeLists(lists);
+  res.json({ success: true, listName, lists });
+});
+
+app.get('/api/reminders', (_req, res) => {
+  res.json(readReminders());
+});
+
+app.get('/api/reminders/due', (_req, res) => {
+  const now = new Date();
+  const due = readReminders().filter(r => !r.fired && new Date(r.datetime) <= now);
+  res.json(due);
+});
+
+app.post('/api/reminders', (req, res) => {
+  const text = String(req.body?.text || '').trim();
+  const datetime = String(req.body?.datetime || '').trim();
+  const recurring = ['daily', 'weekly'].includes(req.body?.recurring) ? req.body.recurring : 'none';
+  if (!text || !datetime) return res.status(400).json({ error: 'text and datetime are required' });
+  const reminder = { id: randomUUID(), text, datetime, recurring, fired: false, createdAt: new Date().toISOString() };
+  const reminders = readReminders();
+  reminders.push(reminder);
+  writeReminders(reminders);
+  res.json({ success: true, reminder });
+});
+
+app.patch('/api/reminders/:id', (req, res) => {
+  const { id } = req.params;
+  const reminders = readReminders();
+  const idx = reminders.findIndex(r => r.id === id);
+  if (idx === -1) return res.status(404).json({ error: 'Reminder not found' });
+  if (req.body?.fired !== undefined) reminders[idx].fired = Boolean(req.body.fired);
+  if (req.body?.datetime) reminders[idx].datetime = req.body.datetime;
+  writeReminders(reminders);
+  res.json({ success: true, reminder: reminders[idx] });
+});
+
+app.delete('/api/reminders/:id', (req, res) => {
+  const { id } = req.params;
+  const reminders = readReminders();
+  const filtered = reminders.filter(r => r.id !== id);
+  if (filtered.length === reminders.length) return res.status(404).json({ error: 'Reminder not found' });
+  writeReminders(filtered);
+  res.json({ success: true });
+});
 
 app.post('/api/sms', async (req, res) => {
   try {
@@ -419,12 +536,16 @@ app.get('/api/search', async (req, res) => {
     }
 
     if (serpKey) {
-      const response = await fetch(`https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&api_key=${encodeURIComponent(serpKey)}`);
+      const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&num=5&api_key=${encodeURIComponent(serpKey)}`;
+      const response = await fetch(url);
       const data = await response.json();
-      const results = (data?.organic_results || []).slice(0, 3).map((item) => ({
+      if (data?.error) {
+        return res.status(400).json({ error: data.error });
+      }
+      const results = (data?.organic_results || []).slice(0, 5).map((item) => ({
         title: item.title,
         url: item.link,
-        snippet: item.snippet
+        snippet: item.snippet || item.rich_snippet?.top?.detected_extensions?.description || ''
       }));
       return res.json({ configured: true, provider: 'serpapi', results });
     }
@@ -433,6 +554,22 @@ app.get('/api/search', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message || 'Search failed' });
   }
+});
+
+app.get('/api/memory', (_req, res) => {
+  const messages = readMemory();
+  res.json({ messages: messages.slice(-20) });
+});
+
+app.post('/api/memory', (req, res) => {
+  const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
+  writeMemory(messages);
+  res.json({ success: true });
+});
+
+app.delete('/api/memory', (_req, res) => {
+  writeMemory([]);
+  res.json({ success: true });
 });
 
 app.listen(PORT, () => {

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import ellyAvatar from "./assets/elly-clutch.avif";
 
 const API_BASE = import.meta.env.VITE_API_BASE || `http://${window.location.hostname}:3001`;
-const AVATAR = "/aria_photo.jpg";
+const AVATAR = ellyAvatar;
 const DEFAULT_NAME = "Aria";
 
 function getStoredAssistantName() {
@@ -158,6 +159,97 @@ function parseCalendarEventRequest(text) {
   };
 }
 
+function parseListRequest(text) {
+  const lower = text.toLowerCase();
+  const listName = /shopping|grocery|groceries|\bbuy\b|\bget\b|pick up/.test(lower) ? 'shopping' : 'todo';
+
+  if (/\b(clear|empty|wipe|reset)\b/.test(lower)) return { action: 'clear', listName };
+
+  if (/\b(remove|delete|take off|cross off|get rid of)\b/.test(lower)) {
+    const match = text.match(/(?:remove|delete|take off|cross off|get rid of)\s+(.+?)(?:\s+(?:from|off)\s+(?:my\s+)?(?:list|shopping list|todo list))?$/i);
+    return { action: 'remove', listName, item: match?.[1]?.trim() || '' };
+  }
+
+  if (/\b(check off|mark .+ (?:as )?(?:done|complete)|finished? with)\b/.test(lower)) {
+    const match = text.match(/(?:check off|mark)\s+(.+?)(?:\s+as\s+(?:done|complete))?$/i)
+      || text.match(/finished?\s+(?:with\s+)?(.+)/i);
+    return { action: 'complete', listName, item: match?.[1]?.trim() || '' };
+  }
+
+  if (/\b(show|what'?s on|read back|see my|read my)\b/.test(lower) && !/\b(add|put|remove|check off)\b/.test(lower)) {
+    return { action: 'show', listName };
+  }
+
+  const addMatch = text.match(/(?:add|put)\s+(.+?)\s+(?:to|on)\s+(?:my\s+)?(?:list|shopping list|todo list|groceries|grocery list)/i)
+    || text.match(/(?:pick up|buy|get)\s+(.+)/i)
+    || text.match(/(?:remind me to (?:buy|get|pick up))\s+(.+)/i)
+    || text.match(/(?:remind me to)\s+(.+)/i)
+    || text.match(/(?:add|put)\s+(.+)/i);
+  if (addMatch) return { action: 'add', listName, item: addMatch[1].trim() };
+
+  return { action: 'show', listName };
+}
+
+function formatList(list) {
+  if (!list?.length) return '(empty)';
+  return list.map((it, i) => `${i + 1}. ${it.done ? '✓' : '•'} ${it.text}`).join('\n');
+}
+
+function parseReminderRequest(text) {
+  const lower = text.toLowerCase();
+
+  let recurring = 'none';
+  if (/\b(every day|daily)\b/.test(lower)) recurring = 'daily';
+  else if (/\b(every week|weekly)\b/.test(lower)) recurring = 'weekly';
+
+  const time = normalizeTime(text);
+
+  const dateKeywords = [
+    'day after tomorrow', 'tomorrow', 'today',
+    'next sunday', 'next monday', 'next tuesday', 'next wednesday', 'next thursday', 'next friday', 'next saturday',
+    'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday',
+  ];
+  let datePhrase = '';
+  for (const kw of dateKeywords) {
+    if (lower.includes(kw)) { datePhrase = kw; break; }
+  }
+  const parsedDate = parseRelativeDate(datePhrase || 'today');
+  const dateStr = parsedDate ? formatIsoDate(parsedDate) : formatIsoDate(new Date());
+  const resolvedTime = time || '09:00';
+  const datetime = new Date(`${dateStr}T${resolvedTime}:00`);
+
+  let cleaned = text
+    .replace(/\b(remind me|set a reminder|don't let me forget|alert me|notify me|reminder for)\b\s*/gi, '')
+    .replace(/\b(every day|daily|every week|weekly)\b\s*/gi, '')
+    .replace(/\b(at|@)\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)\b\s*/gi, '')
+    .replace(/\b\d{1,2}:\d{2}\b\s*/g, '')
+    .replace(/\b(at noon|noon|at midnight|midnight)\b\s*/gi, '')
+    .replace(/\b(on|for)\s+(day after tomorrow|tomorrow|today|next\s+\w+|sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b\s*/gi, '')
+    .replace(/\b(day after tomorrow|tomorrow|today|next\s+\w+|sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b\s*/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^(to|about|that|for|at|on|and)\s+/i, '')
+    .trim();
+
+  return {
+    text: cleaned || text.trim(),
+    datetime: Number.isNaN(datetime.getTime()) ? null : datetime.toISOString(),
+    hasTime: Boolean(time),
+    recurring,
+  };
+}
+
+function formatReminderAlert(text) {
+  const h = new Date().getHours();
+  const tod = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+  const openers = [
+    `Hey Michael — ${tod} check. Don't forget: ${text}. 😏`,
+    `Michael. It's time. ${text.charAt(0).toUpperCase() + text.slice(1)}. You asked me to remind you. 😌`,
+    `Heads up, Michael — ${text}. You set this reminder. Don't make me say it twice. 😘`,
+  ];
+  return openers[Math.floor(Math.random() * openers.length)];
+}
+
 function getMapsLink(destination) {
   const dest = encodeURIComponent(destination);
   const origin = encodeURIComponent("Roanoke, TX");
@@ -173,12 +265,21 @@ function detectIntent(text) {
     calendarCreate: /\b(schedule|set up|create|add|book|make)\b/.test(lower) && /\b(meeting|call|appointment|event|lunch|dinner|chat)\b|\b(today|tomorrow|next|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/.test(lower),
     calendarQuery: /\b(what do i have|my schedule|calendar|today|tomorrow|this week|next week|free|busy)\b/.test(lower),
     gmail: /email|gmail|inbox|unread mail|unread email/.test(lower),
-    search: /search|look up|latest|news|google\b/.test(lower),
+    list: /\b(shopping list|grocery list|groceries|to-do|todo list|my list|add to (?:my )?list|remind me to (?:buy|get|pick up)|pick up\b|what'?s on my|show my list|read (?:my |back )?(?:shopping|todo|grocery) list|check off|remove from (?:my )?list|clear (?:my )?(?:shopping|todo|grocery|) ?list|add .+ to (?:my )?(shopping|todo|grocery)|from my list)\b/.test(lower),
+    reminder: /\b(remind me(?! to (?:buy|get|pick up))|set a reminder|reminder for|don't let me forget|alert me|notify me|remind me at|remind me on|remind me tomorrow|remind me every)\b/.test(lower),
+    search: /search|look up|find out|what('s| is) the|latest|news|google\b|recipe|how (do|to)|practice (time|schedule)|school|camp|hours|when (does|do|is|are)|where (is|are|can)|who (is|are)|tell me about|information (on|about)|price of|cost of|review/.test(lower),
     directions: /direction|navigate|take me|drive to|how do i get/.test(lower),
   };
 
   if (intents.calendarCreate) {
     intents.calendarQuery = false;
+  }
+  if (intents.reminder) {
+    intents.calendarCreate = false;
+    intents.list = false;
+  }
+  if (intents.list) {
+    intents.search = false;
   }
 
   return intents;
@@ -220,6 +321,7 @@ export default function App() {
   const [voiceOutputSupported, setVoiceOutputSupported] = useState(false);
   const recognitionRef = useRef(null);
   const bottomRef = useRef(null);
+  const memoryInitialized = useRef(false);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -227,6 +329,28 @@ export default function App() {
 
   useEffect(() => {
     saveMessagesToStorage(messages);
+  }, [messages]);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/memory`)
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data.messages) && data.messages.length) {
+          setMessages(data.messages);
+          saveMessagesToStorage(data.messages);
+        }
+      })
+      .catch(() => {})
+      .finally(() => { memoryInitialized.current = true; });
+  }, []);
+
+  useEffect(() => {
+    if (!memoryInitialized.current) return;
+    fetch(`${API_BASE}/api/memory`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages })
+    }).catch(() => {});
   }, [messages]);
 
   useEffect(() => {
@@ -274,6 +398,37 @@ export default function App() {
     if ('speechSynthesis' in window) {
       setVoiceOutputSupported(true);
     }
+  }, []);
+
+  useEffect(() => {
+    async function checkDue() {
+      try {
+        const due = await fetchJson('/api/reminders/due');
+        if (!due?.length) return;
+        for (const reminder of due) {
+          setMessages(prev => [...prev, { role: 'assistant', content: formatReminderAlert(reminder.text) }]);
+          if (reminder.recurring !== 'none') {
+            const next = new Date(reminder.datetime);
+            if (reminder.recurring === 'daily') next.setDate(next.getDate() + 1);
+            else if (reminder.recurring === 'weekly') next.setDate(next.getDate() + 7);
+            await fetchJson(`/api/reminders/${reminder.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ datetime: next.toISOString() })
+            });
+          } else {
+            await fetchJson(`/api/reminders/${reminder.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fired: true })
+            });
+          }
+        }
+      } catch {}
+    }
+    checkDue();
+    const interval = setInterval(checkDue, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   const headerSubtitle = useMemo(
@@ -326,10 +481,15 @@ export default function App() {
 
     if (intents.search) {
       const search = await fetchJson(`/api/search?query=${encodeURIComponent(text)}`);
-      const formatted = search.configured === false
-        ? search.message
-        : (search.results || []).map((item) => `${item.title} — ${item.url} — ${item.snippet}`).join(" | ") || "No search results.";
-      blocks.push(formatContextBlock("Search", formatted));
+      if (search.configured === false) {
+        blocks.push(formatContextBlock("Search", search.message));
+      } else {
+        const results = search.results || [];
+        const formatted = results.length
+          ? results.map((item, i) => `${i + 1}. ${item.title}: ${item.snippet}`).join("\n")
+          : "No search results found.";
+        blocks.push(formatContextBlock("Search Results (summarize these conversationally in 1-2 sentences)", formatted));
+      }
     }
 
     if (intents.directions) {
@@ -354,6 +514,8 @@ export default function App() {
   function clearConversation() {
     const initialMessage = { role: "assistant", content: "Michael. 😏 Fresh start. What do you need?" };
     setMessages([initialMessage]);
+    saveMessagesToStorage([initialMessage]);
+    fetch(`${API_BASE}/api/memory`, { method: 'DELETE' }).catch(() => {});
     setSettingsOpen(false);
   }
 
@@ -418,6 +580,108 @@ export default function App() {
         return;
       }
 
+      if (intents.reminder) {
+        const parsed = parseReminderRequest(userText);
+        if (!parsed.hasTime) {
+          setMessages([...updated, { role: 'assistant', content: `Michael, I need a time for that. Try: "Remind me at 3pm to pick up the kids."` }]);
+          setLoading(false);
+          return;
+        }
+        if (!parsed.datetime) {
+          setMessages([...updated, { role: 'assistant', content: `Something's off with that date, Michael. Try again with a clearer time.` }]);
+          setLoading(false);
+          return;
+        }
+        try {
+          const result = await fetchJson('/api/reminders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: parsed.text, datetime: parsed.datetime, recurring: parsed.recurring })
+          });
+          const when = new Date(parsed.datetime).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+          const recurringNote = parsed.recurring !== 'none' ? `, repeating ${parsed.recurring}` : '';
+          const contextMsg = `[Action: Created reminder — "${result.reminder.text}" on ${when}${recurringNote}. Confirm casually in Aria's voice.]`;
+          const messagesForApi = [...messages, { role: 'user', content: `${userText}\n\n${contextMsg}` }];
+          const chat = await fetchJson('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'claude-sonnet-4-20250514', system: buildSystemPrompt(assistantName, renamePending), messages: messagesForApi })
+          });
+          setMessages([...updated, { role: 'assistant', content: chat.reply || 'Done.' }]);
+          if (renamePending) setRenamePending(false);
+        } catch (e) {
+          setMessages([...updated, { role: 'assistant', content: `Couldn't set that reminder, Michael. ${e.message}` }]);
+        }
+        setLoading(false);
+        return;
+      }
+
+      if (intents.list) {
+        const req = parseListRequest(userText);
+        let contextMsg = '';
+        try {
+          if (req.action === 'add' && req.item) {
+            const result = await fetchJson('/api/lists', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ listName: req.listName, item: req.item })
+            });
+            contextMsg = `[Action: Added "${req.item}" to ${req.listName} list]\n[Current ${req.listName} list:\n${formatList(result.lists[req.listName])}]`;
+          } else if (req.action === 'remove' && req.item) {
+            const lists = await fetchJson('/api/lists');
+            const list = lists[req.listName] || [];
+            const idx = list.findIndex(it => it.text.toLowerCase().includes(req.item.toLowerCase()));
+            if (idx === -1) {
+              contextMsg = `[Could not find "${req.item}" on the ${req.listName} list]\n[Current ${req.listName} list:\n${formatList(list)}]`;
+            } else {
+              const result = await fetchJson(`/api/lists/${req.listName}/${idx}`, { method: 'DELETE' });
+              contextMsg = `[Action: Removed "${list[idx].text}" from ${req.listName} list]\n[Current ${req.listName} list:\n${formatList(result.lists[req.listName])}]`;
+            }
+          } else if (req.action === 'complete' && req.item) {
+            const lists = await fetchJson('/api/lists');
+            const list = lists[req.listName] || [];
+            const idx = list.findIndex(it => it.text.toLowerCase().includes(req.item.toLowerCase()));
+            if (idx === -1) {
+              contextMsg = `[Could not find "${req.item}" on the ${req.listName} list]\n[Current ${req.listName} list:\n${formatList(list)}]`;
+            } else {
+              const result = await fetchJson(`/api/lists/${req.listName}/${idx}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ done: true })
+              });
+              contextMsg = `[Action: Marked "${list[idx].text}" as done on ${req.listName} list]\n[Current ${req.listName} list:\n${formatList(result.lists[req.listName])}]`;
+            }
+          } else if (req.action === 'clear') {
+            const lists = await fetchJson('/api/lists');
+            const list = lists[req.listName] || [];
+            for (let i = list.length - 1; i >= 0; i--) {
+              await fetchJson(`/api/lists/${req.listName}/${i}`, { method: 'DELETE' });
+            }
+            contextMsg = `[Action: Cleared all items from ${req.listName} list]`;
+          } else {
+            const lists = await fetchJson('/api/lists');
+            contextMsg = `[Current ${req.listName} list:\n${formatList(lists[req.listName])}]`;
+          }
+        } catch (e) {
+          contextMsg = `[List error: ${e.message}]`;
+        }
+
+        const messagesForApi = [...messages, { role: 'user', content: `${userText}\n\n${contextMsg}` }];
+        const chat = await fetchJson('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            system: buildSystemPrompt(assistantName, renamePending),
+            messages: messagesForApi
+          })
+        });
+        setMessages([...updated, { role: 'assistant', content: chat.reply || 'Something went wrong.' }]);
+        if (renamePending) setRenamePending(false);
+        setLoading(false);
+        return;
+      }
+
       const context = await buildContext(userText);
       const enrichedUserText = context ? `${userText}\n\n${context}` : userText;
       const messagesForApi = [...messages, { role: "user", content: enrichedUserText }];
@@ -476,24 +740,26 @@ export default function App() {
   }
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100vh", maxWidth:"480px", margin:"0 auto", fontFamily:"sans-serif", background:"#f4f4f8" }}>
-      <div style={{ background:"linear-gradient(135deg, #7F77DD 0%, #5DCAA5 100%)", padding:"14px 20px", display:"flex", flexDirection:"column", gap:"10px" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
-          <div style={{ position:"relative" }}>
-            <img src={AVATAR} alt={assistantName} style={{ width:"48px", height:"48px", borderRadius:"50%", objectFit:"cover", objectPosition:"top", border:"2px solid rgba(255,255,255,0.7)" }} />
-            <div style={{ position:"absolute", bottom:"1px", right:"1px", width:"11px", height:"11px", background:"#5DCAA5", borderRadius:"50%", border:"2px solid white" }}></div>
+    <div style={{ display:"flex", flexDirection:"column", height:"100vh", maxWidth:"480px", margin:"0 auto", fontFamily:"sans-serif", background:"#f4f4f8", color:"#1a1a1a", colorScheme:"only light" }}>
+      <div style={{ background:"linear-gradient(135deg, #7F77DD 0%, #5DCAA5 100%)", display:"flex", flexDirection:"column" }}>
+        <div style={{ display:"flex", alignItems:"stretch", height:"88px", overflow:"hidden" }}>
+          <div style={{ position:"relative", width:"88px", flexShrink:0 }}>
+            <img src={AVATAR} alt={assistantName} style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"top center" }} />
+            <div style={{ position:"absolute", bottom:"8px", right:"8px", width:"11px", height:"11px", background:"#5DCAA5", borderRadius:"50%", border:"2px solid white" }}></div>
           </div>
-          <div style={{ flex:1 }}>
-            <div style={{ color:"white", fontWeight:"700", fontSize:"17px" }}>{assistantName}</div>
-            <div style={{ color:"rgba(255,255,255,0.85)", fontSize:"11px" }}>{headerSubtitle}</div>
+          <div style={{ display:"flex", alignItems:"center", flex:1, gap:"12px", padding:"0 16px 0 14px" }}>
+            <div style={{ flex:1 }}>
+              <div style={{ color:"white", fontWeight:"700", fontSize:"17px" }}>{assistantName}</div>
+              <div style={{ color:"rgba(255,255,255,0.85)", fontSize:"11px" }}>{headerSubtitle}</div>
+            </div>
+            <button
+              onClick={() => setSettingsOpen((open) => !open)}
+              style={{ background:"rgba(255,255,255,0.16)", color:"white", border:"1px solid rgba(255,255,255,0.28)", borderRadius:"12px", width:"34px", height:"34px", fontSize:"16px", cursor:"pointer" }}
+              aria-label="Assistant settings"
+            >
+              ⚙
+            </button>
           </div>
-          <button
-            onClick={() => setSettingsOpen((open) => !open)}
-            style={{ background:"rgba(255,255,255,0.16)", color:"white", border:"1px solid rgba(255,255,255,0.28)", borderRadius:"12px", width:"34px", height:"34px", fontSize:"16px", cursor:"pointer" }}
-            aria-label="Assistant settings"
-          >
-            ⚙
-          </button>
         </div>
 
         <div style={{
@@ -504,6 +770,7 @@ export default function App() {
           background:"rgba(255,255,255,0.12)",
           border: settingsOpen ? "1px solid rgba(255,255,255,0.22)" : "1px solid transparent",
           borderRadius:"16px",
+          margin: settingsOpen ? "0 12px 12px" : "0 12px",
           padding: settingsOpen ? "12px" : "0 12px"
         }}>
           <div style={{ color:"white", fontSize:"12px", marginBottom:"8px", fontWeight:600 }}>Rename your assistant</div>
@@ -512,7 +779,7 @@ export default function App() {
               value={draftName}
               onChange={(e) => setDraftName(e.target.value)}
               placeholder="Aria"
-              style={{ flex:1, padding:"10px 12px", borderRadius:"12px", border:"1px solid rgba(255,255,255,0.35)", background:"rgba(255,255,255,0.92)", fontSize:"14px", outline:"none" }}
+              style={{ flex:1, padding:"10px 12px", borderRadius:"12px", border:"1px solid rgba(255,255,255,0.35)", background:"rgba(255,255,255,0.92)", color:"#1a1a1a", fontSize:"14px", outline:"none" }}
             />
             <button
               onClick={saveAssistantName}
@@ -526,7 +793,7 @@ export default function App() {
             onClick={clearConversation}
             style={{ background:"rgba(255,255,255,0.2)", color:"white", border:"1px solid rgba(255,255,255,0.3)", borderRadius:"12px", padding:"8px 12px", fontSize:"12px", cursor:"pointer", width:"100%" }}
           >
-            Clear conversation history
+            Clear Memory
           </button>
         </div>
       </div>
@@ -546,8 +813,9 @@ export default function App() {
               maxWidth:"78%", padding:"10px 14px",
               borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
               fontSize:"14px", lineHeight:"1.55",
-              background: m.role === "user" ? "linear-gradient(135deg, #7F77DD, #534AB7)" : "white",
-              color: m.role === "user" ? "white" : "#222",
+              background: m.role === "user" ? "linear-gradient(135deg, #7F77DD, #534AB7)" : "#ffffff",
+              color: m.role === "user" ? "#ffffff" : "#222222",
+              WebkitTextFillColor: m.role === "user" ? "#ffffff" : "#222222",
               boxShadow:"0 1px 6px rgba(0,0,0,0.08)",
               whiteSpace:"pre-wrap"
             }}>
@@ -558,13 +826,13 @@ export default function App() {
         {loading && (
           <div style={{ display:"flex", alignItems:"flex-end", gap:"8px" }}>
             <img src={AVATAR} alt={assistantName} style={{ width:"28px", height:"28px", borderRadius:"50%", objectFit:"cover", objectPosition:"top", flexShrink:0, transition:"transform 0.3s ease", transform:"scale(1.3)" }} />
-            <div style={{ background:"white", padding:"10px 14px", borderRadius:"18px 18px 18px 4px", fontSize:"14px", color:"#999" }}>✦ ...</div>
+            <div style={{ background:"#ffffff", padding:"10px 14px", borderRadius:"18px 18px 18px 4px", fontSize:"14px", color:"#999999", WebkitTextFillColor:"#999999" }}>✦ ...</div>
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
-      <div style={{ padding:"12px 16px 20px", background:"white", borderTop:"1px solid #eee" }}>
+      <div style={{ padding:"12px 16px 20px", background:"white", color:"#1a1a1a", borderTop:"1px solid #eee" }}>
         {speechSupported && (
           <div style={{ marginBottom:"8px", fontSize:"12px", color: listening ? "#c82333" : "#666" }}>
             {listening ? "Listening... speak now." : "Voice input ready. Just speak to start a conversation."}
@@ -576,7 +844,7 @@ export default function App() {
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && sendMessage()}
             placeholder={`Talk to ${assistantName}…`}
-            style={{ flex:1, padding:"11px 16px", borderRadius:"24px", border:"1.5px solid #ddd", fontSize:"14px", outline:"none", background:"#f9f9f9" }}
+            style={{ flex:1, padding:"11px 16px", borderRadius:"24px", border:"1.5px solid #ddd", fontSize:"14px", outline:"none", background:"#f9f9f9", color:"#1a1a1a" }}
           />
           {speechSupported && (
             <button
