@@ -93,5 +93,15 @@
     "id": "2317c9f5-3ed4-41a6-b38c-1fc67b7b522e",
     "role": "assistant",
     "content": "Lost connection. (Error: messages.0.id: Extra inputs are not permitted)"
+  },
+  {
+    "id": "9abc9e07-da12-4aff-960c-8c15cab42491",
+    "role": "user",
+    "content": "hey what's the weather today"
+  },
+  {
+    "id": "e79f3af5-7bb5-4061-8106-ddb7deb33f49",
+    "role": "assistant",
+    "content": "72°F and partly cloudy in Roanoke, Michael. Perfect weather for skating, wouldn't you say? 😏"
   }
 ]
