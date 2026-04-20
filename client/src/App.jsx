@@ -4,7 +4,8 @@ import ellyAvatar from "./assets/elly-clutch.avif";
 const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'https://aria-assistant-production-6730.up.railway.app'
 const AVATAR = ellyAvatar;
 const DEFAULT_NAME = "Aria";
-let activeTtsKey = null;
+let ttsAudio = null;
+let ttsPlaying = false;
 const INITIAL_ASSISTANT_GREETING = "Michael. 😏 You kept me waiting. What do you need?";
 
 function createMessage(role, content) {
@@ -344,11 +345,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [voiceOn, setVoiceOn] = useState(true);
   const recognitionRef = useRef(null);
-  const currentAudioRef = useRef(null);
-  const shouldResumeListeningRef = useRef(false);
-  const ttsCacheRef = useRef(new Map());
   const bottomRef = useRef(null);
   const memoryInitialized = useRef(false);
 
@@ -359,16 +357,6 @@ export default function App() {
   useEffect(() => {
     saveMessagesToStorage(messages);
   }, [messages]);
-
-  useEffect(() => {
-    if (voiceEnabled) return;
-    if (!currentAudioRef.current) return;
-    console.log("[TTS] voice disabled, stopping current audio");
-    currentAudioRef.current.pause();
-    currentAudioRef.current.currentTime = 0;
-    currentAudioRef.current = null;
-    shouldResumeListeningRef.current = false;
-  }, [voiceEnabled]);
 
   useEffect(() => {
     setMessages((current) => normalizeMessages(current));
@@ -505,164 +493,80 @@ export default function App() {
       .replace(/https?:\/\/[^\s]+/g, "")
       .replace(/\*[^*]+\*/g, " ")
       .replace(/:[a-z0-9_+\-]+:/gi, " ")
+      .replace(/[\p{Extended_Pictographic}\u200d\uFE0F]+/gu, " ")
       .replace(/[^\p{L}\p{N}\s.,!?"'()\-:;@/#&%$+]/gu, " ")
       .replace(/\s+/g, " ")
       .trim();
     return cleaned;
   }
 
-  async function fetchTtsAudio(text) {
-    const content = sanitizeSpeechText(text);
-    console.log("[TTS] fetchTtsAudio start", { originalLength: String(text || "").length, cleanedText: content, cleanedLength: content.length });
-    if (!content) {
-      console.log("[TTS] fetchTtsAudio aborted: cleaned text is empty");
-      return null;
+  function stopSpeaking() {
+    if (ttsAudio) {
+      ttsAudio.pause();
+      ttsAudio.currentTime = 0;
+      ttsAudio = null;
     }
+    ttsPlaying = false;
+  }
+
+  async function speak(text) {
+    const cleanedText = sanitizeSpeechText(text);
+    console.log("[TTS] speak", { voiceOn, cleanedText });
+    if (!voiceOn) return;
+    if (!cleanedText) return;
+
+    stopSpeaking();
+    ttsPlaying = true;
+
+    const pendingAudio = new Audio();
+    ttsAudio = pendingAudio;
 
     try {
-      console.log("[TTS] exact text sent to ElevenLabs:", content);
-      console.log("[TTS] POST /api/tts");
+      console.log("[TTS] POST /api/tts", cleanedText);
       const result = await fetchJson("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: content })
+        body: JSON.stringify({ text: cleanedText })
       });
-      console.log("[TTS] /api/tts response received", {
-        hasAudioContent: Boolean(result?.audioContent),
-        audioLength: result?.audioContent?.length || 0
-      });
-      return result?.audioContent || null;
-    } catch (error) {
-      console.warn("[TTS] request failed:", error);
-      return null;
-    }
-  }
 
-  function playAudioContent(audioContent) {
-    console.log("[TTS] playAudioContent start", {
-      hasAudioContent: Boolean(audioContent),
-      audioLength: audioContent?.length || 0
-    });
-
-    if (!audioContent) {
-      console.log("[TTS] playAudioContent aborted", {
-        reason: "missing audio"
-      });
-      return;
-    }
-
-    if (currentAudioRef.current) {
-      console.log("[TTS] stopping previous audio");
-      currentAudioRef.current.pause();
-      currentAudioRef.current.currentTime = 0;
-      currentAudioRef.current = null;
-    }
-
-    const audioUrl = "data:audio/mp3;base64," + audioContent;
-    console.log("[TTS] creating Audio object");
-    const audio = new Audio(audioUrl);
-    currentAudioRef.current = audio;
-    audio.onended = () => {
-      console.log("[TTS] audio ended");
-      activeTtsKey = null;
-      if (currentAudioRef.current === audio) {
-        currentAudioRef.current = null;
-      }
-      if (shouldResumeListeningRef.current && recognitionRef.current && !listening) {
-        console.log("[TTS] restarting voice recognition after audio ended");
-        shouldResumeListeningRef.current = false;
-        try {
-          recognitionRef.current.start();
-        } catch (error) {
-          console.warn("[TTS] failed to restart voice recognition", error);
-        }
-      } else {
-        shouldResumeListeningRef.current = false;
-      }
-    };
-    audio.onerror = () => {
-      console.warn("[TTS] audio error");
-      activeTtsKey = null;
-      if (currentAudioRef.current === audio) {
-        currentAudioRef.current = null;
-      }
-      shouldResumeListeningRef.current = false;
-    };
-    console.log("[TTS] calling audio.play()");
-    audio.play()
-      .then(() => {
-        console.log("[TTS] audio.play() resolved");
-      })
-      .catch((error) => {
-        console.warn("[TTS] audio.play() failed:", error);
-        activeTtsKey = null;
-        if (shouldResumeListeningRef.current && recognitionRef.current && !listening) {
-          console.log("[TTS] restarting voice recognition after audio.play() failure");
-          shouldResumeListeningRef.current = false;
-          try {
-            recognitionRef.current.start();
-          } catch (restartError) {
-            console.warn("[TTS] failed to restart voice recognition after play failure", restartError);
-          }
-        } else {
-          shouldResumeListeningRef.current = false;
-        }
-      });
-  }
-
-  async function speakAssistantMessage(message, options = {}) {
-    if (!message?.content) return;
-    const { force = false } = options;
-    const messageId = message.id || message.content;
-    const audioKey = message.audioKey || `${messageId}::${sanitizeSpeechText(message.content)}`;
-    message.audioKey = audioKey;
-    console.log("[TTS] speakAssistantMessage", { messageId, force, audioKey, voiceEnabled, activeTtsKey });
-
-    if (audioKey === activeTtsKey) {
-      console.log("[TTS] speakAssistantMessage skipped: activeTtsKey match");
-      return;
-    }
-
-    activeTtsKey = audioKey;
-
-    if (!force) {
-      if (!voiceEnabled) {
-        console.log("[TTS] speakAssistantMessage skipped", {
-          voiceEnabled,
-          reason: "voice disabled"
-        });
-        activeTtsKey = null;
+      if (ttsAudio !== pendingAudio) {
+        console.log("[TTS] speak cancelled before playback");
         return;
       }
-    }
 
-    if (ttsCacheRef.current.has(audioKey)) {
-      console.log("[TTS] cache hit");
-      playAudioContent(ttsCacheRef.current.get(audioKey));
-      return;
-    }
-
-    console.log("[TTS] cache miss, fetching audio");
-    shouldResumeListeningRef.current = listening;
-    if (recognitionRef.current && listening) {
-      console.log("[TTS] pausing voice recognition before speech");
-      try {
-        recognitionRef.current.stop();
-      } catch (error) {
-        console.warn("[TTS] failed to stop voice recognition", error);
+      const base64data = result?.audioContent;
+      console.log("[TTS] /api/tts response", { hasAudio: Boolean(base64data), length: base64data?.length || 0 });
+      if (!base64data) {
+        ttsAudio = null;
+        ttsPlaying = false;
+        return;
       }
-    }
-    const audioContent = await fetchTtsAudio(message.content);
-    if (!audioContent) {
-      console.log("[TTS] no audio returned from /api/tts");
-      activeTtsKey = null;
-      shouldResumeListeningRef.current = false;
-      return;
-    }
 
-    ttsCacheRef.current.set(audioKey, audioContent);
-    console.log("[TTS] audio cached, playing");
-    playAudioContent(audioContent);
+      const audio = new Audio("data:audio/mp3;base64," + base64data);
+      ttsAudio = audio;
+      audio.onended = () => {
+        if (ttsAudio === audio) {
+          ttsAudio = null;
+        }
+        ttsPlaying = false;
+      };
+      audio.onerror = () => {
+        if (ttsAudio === audio) {
+          ttsAudio = null;
+        }
+        ttsPlaying = false;
+      };
+
+      console.log("[TTS] calling audio.play()");
+      await audio.play();
+      console.log("[TTS] audio.play() resolved");
+    } catch (error) {
+      console.warn("[TTS] speak failed:", error);
+      if (ttsAudio === pendingAudio) {
+        ttsAudio = null;
+      }
+      ttsPlaying = false;
+    }
   }
 
   async function buildContext(text) {
@@ -776,7 +680,7 @@ export default function App() {
       console.log("[sendMessage] appendAssistantReply", { replyText });
       const assistantMessage = createMessage("assistant", replyText);
       setMessages([...updated, assistantMessage]);
-      await speakAssistantMessage(assistantMessage);
+      await speak(assistantMessage.content);
     };
 
     setMessages(updated);
@@ -985,11 +889,16 @@ export default function App() {
               <div style={{ color:"rgba(255,255,255,0.85)", fontSize:"11px" }}>{headerSubtitle}</div>
             </div>
             <button
-              onClick={() => setVoiceEnabled((enabled) => !enabled)}
-              style={{ background: voiceEnabled ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.08)", color:"white", border:"1px solid rgba(255,255,255,0.28)", borderRadius:"12px", width:"34px", height:"34px", fontSize:"16px", cursor:"pointer" }}
-              aria-label={voiceEnabled ? "Mute voice output" : "Unmute voice output"}
+              onClick={() => {
+                if (voiceOn) {
+                  stopSpeaking();
+                }
+                setVoiceOn((enabled) => !enabled);
+              }}
+              style={{ background: voiceOn ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.08)", color:"white", border:"1px solid rgba(255,255,255,0.28)", borderRadius:"12px", width:"34px", height:"34px", fontSize:"16px", cursor:"pointer" }}
+              aria-label={voiceOn ? "Mute voice output" : "Unmute voice output"}
             >
-              {voiceEnabled ? "🔊" : "🔇"}
+              {voiceOn ? "🔊" : "🔇"}
             </button>
             <button
               onClick={() => setSettingsOpen((open) => !open)}
@@ -1063,7 +972,7 @@ export default function App() {
                   {renderMessage(m.content)}
                 </div>
                 <button
-                  onClick={() => speakAssistantMessage(m, { force: true })}
+                  onClick={() => speak(m.content)}
                   aria-label="Replay voice"
                   style={{
                     width:"28px",
