@@ -575,11 +575,26 @@ export default function App() {
     const { force = false } = options;
     const messageId = message.id || message.content;
     const audioKey = `${messageId}::${sanitizeSpeechText(message.content)}`;
-    console.log("[TTS] speakAssistantMessage", { messageId, force, audioKey });
+    console.log("[TTS] speakAssistantMessage", { messageId, force, audioKey, voiceEnabled, audioSupported });
 
-    if (!force && (!voiceEnabled || !audioSupported)) {
-      console.log("[TTS] speakAssistantMessage skipped: voice disabled or audio unsupported");
-      return;
+    if (!force) {
+      if (!voiceEnabled) {
+        console.log("[TTS] speakAssistantMessage skipped", {
+          voiceEnabled,
+          audioSupported,
+          reason: "voice disabled"
+        });
+        return;
+      }
+
+      if (!audioSupported) {
+        console.log("[TTS] speakAssistantMessage skipped", {
+          voiceEnabled,
+          audioSupported,
+          reason: "audio unsupported"
+        });
+        return;
+      }
     }
 
     if (ttsCacheRef.current.has(audioKey)) {
