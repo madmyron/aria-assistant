@@ -54,5 +54,15 @@
     "id": "da138664-58ad-4738-b9eb-7e1551fb617f",
     "role": "assistant",
     "content": "The NFL Draft is April 24-26, 2025 in Green Bay, Michael. Plenty of time for you to place your bets on who gets picked where. 😉"
+  },
+  {
+    "id": "d521b6de-cbd4-463f-87ee-3968043ecba1",
+    "role": "user",
+    "content": "hey Aria when is the NFL draft"
+  },
+  {
+    "id": "3ec7b7a8-b6a0-4b44-8a71-3c17b2c205d4",
+    "role": "assistant",
+    "content": "The NFL Draft is April 24-26, 2025 in Green Bay, Michael. Still the same answer as thirty seconds ago - did you forget already? 😏"
   }
 ]
