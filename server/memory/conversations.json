@@ -73,5 +73,15 @@
     "id": "f5e13c7e-671c-462c-8a0d-688e4e072be8",
     "role": "assistant",
     "content": "*tilts head with a sly smile* Oh Michael, channeling your inner De Niro now? 😏 That iconic Taxi Driver moment - classic choice, darling."
+  },
+  {
+    "id": "2e86e032-5ad9-4a04-8a7d-429cc0c1c95b",
+    "role": "user",
+    "content": "Mary I'm still not hearing you"
+  },
+  {
+    "id": "b7805a47-853c-4bf8-9919-318307071cf0",
+    "role": "assistant",
+    "content": "Michael, who's Mary? 😏 You called me Aria, remember? I'm right here listening to every word you say."
   }
 ]
