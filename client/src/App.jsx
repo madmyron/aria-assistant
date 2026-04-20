@@ -7,6 +7,9 @@ const DEFAULT_NAME = "Aria";
 let ttsAudio = null;
 let ttsPlaying = false;
 let sendMessageInProgress = false;
+let ariaIsSpeaking = false;
+let recognitionRestartTimer = null;
+let shouldResumeRecognitionAfterSpeech = false;
 const INITIAL_ASSISTANT_GREETING = "Michael. 😏 You kept me waiting. What do you need?";
 
 function createMessage(role, content) {
@@ -399,6 +402,10 @@ export default function App() {
         setListening(true);
       };
       recognition.onresult = (event) => {
+        if (ariaIsSpeaking) {
+          console.log('Voice recognition ignored while Aria is speaking');
+          return;
+        }
         const transcript = event.results?.[0]?.[0]?.transcript?.trim();
         console.log('Voice recognition result:', transcript);
         if (transcript) {
@@ -502,6 +509,12 @@ export default function App() {
   }
 
   function stopSpeaking() {
+    ariaIsSpeaking = false;
+    shouldResumeRecognitionAfterSpeech = false;
+    if (recognitionRestartTimer) {
+      clearTimeout(recognitionRestartTimer);
+      recognitionRestartTimer = null;
+    }
     if (ttsAudio) {
       ttsAudio.pause();
       ttsAudio.currentTime = 0;
@@ -518,6 +531,15 @@ export default function App() {
     if (!cleanedText) return;
 
     stopSpeaking();
+    shouldResumeRecognitionAfterSpeech = Boolean(listening && recognitionRef.current);
+    if (shouldResumeRecognitionAfterSpeech && recognitionRef.current) {
+      console.log("[TTS] stopping voice recognition before speech");
+      try {
+        recognitionRef.current.stop();
+      } catch (error) {
+        console.warn("[TTS] failed to stop voice recognition before speech", error);
+      }
+    }
     ttsPlaying = true;
 
     const pendingAudio = new Audio();
@@ -546,17 +568,40 @@ export default function App() {
 
       const audio = new Audio("data:audio/mp3;base64," + base64data);
       ttsAudio = audio;
+      ariaIsSpeaking = true;
       audio.onended = () => {
         if (ttsAudio === audio) {
           ttsAudio = null;
         }
         ttsPlaying = false;
+        ariaIsSpeaking = false;
+        if (shouldResumeRecognitionAfterSpeech && recognitionRef.current) {
+          if (recognitionRestartTimer) {
+            clearTimeout(recognitionRestartTimer);
+          }
+          recognitionRestartTimer = setTimeout(() => {
+            recognitionRestartTimer = null;
+            if (shouldResumeRecognitionAfterSpeech && recognitionRef.current && !listening) {
+              console.log("[TTS] restarting voice recognition after speech");
+              try {
+                recognitionRef.current.start();
+              } catch (error) {
+                console.warn("[TTS] failed to restart voice recognition after speech", error);
+              }
+            }
+            shouldResumeRecognitionAfterSpeech = false;
+          }, 1000);
+        } else {
+          shouldResumeRecognitionAfterSpeech = false;
+        }
       };
       audio.onerror = () => {
         if (ttsAudio === audio) {
           ttsAudio = null;
         }
         ttsPlaying = false;
+        ariaIsSpeaking = false;
+        shouldResumeRecognitionAfterSpeech = false;
       };
 
       console.log("[TTS] calling audio.play()");
@@ -568,6 +613,8 @@ export default function App() {
         ttsAudio = null;
       }
       ttsPlaying = false;
+      ariaIsSpeaking = false;
+      shouldResumeRecognitionAfterSpeech = false;
     }
   }
 
