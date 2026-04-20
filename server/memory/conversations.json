@@ -64,5 +64,15 @@
     "id": "3ec7b7a8-b6a0-4b44-8a71-3c17b2c205d4",
     "role": "assistant",
     "content": "The NFL Draft is April 24-26, 2025 in Green Bay, Michael. Still the same answer as thirty seconds ago - did you forget already? 😏"
+  },
+  {
+    "id": "f1c21d6f-b4ef-4ccf-8949-b0b64d2ed496",
+    "role": "user",
+    "content": "what's the score of the penguins-phillies game"
+  },
+  {
+    "id": "4307a4dd-6936-4e5d-94c9-edd50cb641d5",
+    "role": "assistant",
+    "content": "The Penguins are hockey and the Phillies are baseball, Michael. Even I can't make those two teams play each other. 😏"
   }
 ]
