@@ -348,8 +348,6 @@ export default function App() {
   const recognitionRef = useRef(null);
   const activeAudioRef = useRef(null);
   const ttsCacheRef = useRef(new Map());
-  const spokenMessageIdsRef = useRef(new Set());
-  const voiceHydratedRef = useRef(false);
   const bottomRef = useRef(null);
   const memoryInitialized = useRef(false);
 
@@ -371,11 +369,6 @@ export default function App() {
       .then(data => {
         if (Array.isArray(data.messages) && data.messages.length) {
           const normalized = normalizeMessages(data.messages);
-          normalized.forEach((message) => {
-            if (message.role === "assistant" && message.id) {
-              spokenMessageIdsRef.current.add(message.id);
-            }
-          });
           setMessages(normalized);
           saveMessagesToStorage(normalized);
         }
@@ -652,7 +645,6 @@ export default function App() {
     const initialMessage = createMessage("assistant", "Michael. 😏 Fresh start. What do you need?");
     setMessages([initialMessage]);
     saveMessagesToStorage([initialMessage]);
-    spokenMessageIdsRef.current = new Set([initialMessage.id]);
     fetch(`${API_BASE}/api/memory`, { method: 'DELETE' }).catch(() => {});
     setSettingsOpen(false);
   }
@@ -670,6 +662,11 @@ export default function App() {
     const userMsg = createMessage("user", userText);
     const updated = [...messages, userMsg];
     const intents = detectIntent(userText);
+    const appendAssistantReply = async (replyText) => {
+      const assistantMessage = createMessage("assistant", replyText);
+      setMessages([...updated, assistantMessage]);
+      await speakAssistantMessage(assistantMessage);
+    };
 
     setMessages(updated);
     if (!overrideText) setInput("");
@@ -679,7 +676,7 @@ export default function App() {
       if (intents.sms) {
         const smsBody = extractSmsMessage(userText);
         if (!smsBody) {
-          setMessages([...updated, createMessage("assistant", `Michael, give me the exact text you want ${assistantName} to send.`)]);
+          await appendAssistantReply(`Michael, give me the exact text you want ${assistantName} to send.`);
           setLoading(false);
           return;
         }
@@ -688,7 +685,7 @@ export default function App() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: smsBody })
         });
-        setMessages([...updated, createMessage("assistant", `Done, Michael. I sent it: "${smsBody}"`)]);
+        await appendAssistantReply(`Done, Michael. I sent it: "${smsBody}"`);
         setLoading(false);
         return;
       }
@@ -696,7 +693,7 @@ export default function App() {
       if (intents.calendarCreate) {
         const event = parseCalendarEventRequest(userText);
         if (!event.date) {
-          setMessages([...updated, createMessage("assistant", `Michael, I need a date to schedule that event. Try: "Schedule a call with Jake tomorrow at 2pm."`)]);
+          await appendAssistantReply(`Michael, I need a date to schedule that event. Try: "Schedule a call with Jake tomorrow at 2pm."`);
           setLoading(false);
           return;
         }
@@ -708,12 +705,12 @@ export default function App() {
         });
 
         if (!calendar?.success) {
-          setMessages([...updated, createMessage("assistant", `Michael, something went wrong — the event was not created. Error: ${calendar?.error || 'Unknown error'}`)]);
+          await appendAssistantReply(`Michael, something went wrong — the event was not created. Error: ${calendar?.error || 'Unknown error'}`);
           setLoading(false);
           return;
         }
 
-        setMessages([...updated, createMessage("assistant", `Done, Michael. I created "${calendar.event.title}" on ${calendar.event.when}.`)]);
+        await appendAssistantReply(`Done, Michael. I created "${calendar.event.title}" on ${calendar.event.when}.`);
         setLoading(false);
         return;
       }
@@ -721,12 +718,12 @@ export default function App() {
       if (intents.reminder) {
         const parsed = parseReminderRequest(userText);
         if (!parsed.hasTime) {
-          setMessages([...updated, createMessage('assistant', `Michael, I need a time for that. Try: "Remind me at 3pm to pick up the kids."`)]);
+          await appendAssistantReply(`Michael, I need a time for that. Try: "Remind me at 3pm to pick up the kids."`);
           setLoading(false);
           return;
         }
         if (!parsed.datetime) {
-          setMessages([...updated, createMessage('assistant', `Something's off with that date, Michael. Try again with a clearer time.`)]);
+          await appendAssistantReply(`Something's off with that date, Michael. Try again with a clearer time.`);
           setLoading(false);
           return;
         }
@@ -745,10 +742,10 @@ export default function App() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ model: 'claude-sonnet-4-20250514', system: buildSystemPrompt(assistantName, renamePending), messages: messagesForApi })
           });
-          setMessages([...updated, createMessage('assistant', chat.reply || 'Done.')]);
+          await appendAssistantReply(chat.reply || 'Done.');
           if (renamePending) setRenamePending(false);
         } catch (e) {
-          setMessages([...updated, createMessage('assistant', `Couldn't set that reminder, Michael. ${e.message}`)]);
+          await appendAssistantReply(`Couldn't set that reminder, Michael. ${e.message}`);
         }
         setLoading(false);
         return;
@@ -814,7 +811,7 @@ export default function App() {
             messages: messagesForApi
           })
         });
-        setMessages([...updated, createMessage('assistant', chat.reply || 'Something went wrong.')]);
+        await appendAssistantReply(chat.reply || 'Something went wrong.');
         if (renamePending) setRenamePending(false);
         setLoading(false);
         return;
@@ -834,43 +831,15 @@ export default function App() {
         })
       });
 
-      setMessages([...updated, createMessage("assistant", chat.reply || "Something went wrong.")]);
+      await appendAssistantReply(chat.reply || "Something went wrong.");
       if (renamePending) setRenamePending(false);
     } catch (error) {
       console.error("Chat API Error:", error);
-      setMessages([...updated, createMessage("assistant", `Lost connection. (Error: ${error.message})`)]);
+      await appendAssistantReply(`Lost connection. (Error: ${error.message})`);
     }
 
     setLoading(false);
   }
-
-  useEffect(() => {
-    const last = messages[messages.length - 1];
-    if (!last?.id) return;
-
-    if (!voiceHydratedRef.current) {
-      voiceHydratedRef.current = true;
-      return;
-    }
-
-    if (last.role !== "assistant") return;
-
-    if (loading) {
-      return;
-    }
-
-    if (spokenMessageIdsRef.current.has(last.id)) {
-      return;
-    }
-
-    if (!voiceEnabled || !audioSupported) {
-      spokenMessageIdsRef.current.add(last.id);
-      return;
-    }
-
-    spokenMessageIdsRef.current.add(last.id);
-    speakAssistantMessage(last).catch(() => {});
-  }, [messages, loading, voiceEnabled, audioSupported]);
 
   function renderMessage(content) {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
