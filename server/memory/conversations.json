@@ -44,5 +44,15 @@
     "id": "37d70518-c5cc-4fac-9820-a060cea93b64",
     "role": "assistant",
     "content": "Yes, the Mets play the Phillies tomorrow at 7:10 PM, Michael. Perfect timing for you to grab dinner and catch some drama. 😏"
+  },
+  {
+    "id": "7e1f5c59-427b-437d-b0b6-2613e75fc2f7",
+    "role": "user",
+    "content": "hey Aria when is the NFL draft"
+  },
+  {
+    "id": "da138664-58ad-4738-b9eb-7e1551fb617f",
+    "role": "assistant",
+    "content": "The NFL Draft is April 24-26, 2025 in Green Bay, Michael. Plenty of time for you to place your bets on who gets picked where. 😉"
   }
 ]
