@@ -60,6 +60,10 @@ function getAnthropicKey() {
   return process.env.VITE_ANTHROPIC_KEY || '';
 }
 
+function getGoogleTtsKey() {
+  return process.env.GOOGLE_TTS_API_KEY || '';
+}
+
 function parseGoogleAccounts() {
   const accounts = new Map();
   const raw = process.env.GOOGLE_ACCOUNTS;
@@ -259,6 +263,47 @@ app.post('/api/sms', async (req, res) => {
     res.json({ success: true, sid: sms.sid, message: `SMS sent: ${message}` });
   } catch (error) {
     res.status(500).json({ error: error.message || 'SMS failed' });
+  }
+});
+
+app.post('/api/tts', async (req, res) => {
+  try {
+    const apiKey = getGoogleTtsKey();
+    if (!apiKey) {
+      return res.status(500).json({ error: 'Google TTS API key is missing' });
+    }
+
+    const text = String(req.body?.text || '').trim();
+    if (!text) {
+      return res.status(400).json({ error: 'text is required' });
+    }
+
+    const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        input: { text },
+        voice: {
+          languageCode: 'en-US',
+          name: 'en-US-Neural2-F'
+        },
+        audioConfig: {
+          audioEncoding: 'MP3',
+          speakingRate: 1.05
+        }
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return res.status(response.status).json({ error: data?.error?.message || 'Google TTS request failed' });
+    }
+
+    res.json({ audioContent: data.audioContent || '' });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Google TTS request failed' });
   }
 });
 

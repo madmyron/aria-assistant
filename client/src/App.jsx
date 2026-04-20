@@ -4,6 +4,21 @@ import ellyAvatar from "./assets/elly-clutch.avif";
 const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'https://aria-assistant-production-6730.up.railway.app'
 const AVATAR = ellyAvatar;
 const DEFAULT_NAME = "Aria";
+const INITIAL_ASSISTANT_GREETING = "Michael. 😏 You kept me waiting. What do you need?";
+
+function createMessage(role, content) {
+  return {
+    id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    role,
+    content,
+  };
+}
+
+function normalizeMessages(messages = []) {
+  return messages
+    .filter((message) => message && typeof message.content === "string" && typeof message.role === "string")
+    .map((message) => (message.id ? message : createMessage(message.role, message.content)));
+}
 
 function getStoredAssistantName() {
   const saved = localStorage.getItem("aria_name");
@@ -17,14 +32,14 @@ function getStoredMessages() {
       const parsed = JSON.parse(saved);
       // Always ensure we have at least the greeting message
       if (parsed.length === 0 || parsed[0].role !== "assistant") {
-        return [{ role: "assistant", content: "Michael. 😏 You kept me waiting. What do you need?" }];
+        return [createMessage("assistant", INITIAL_ASSISTANT_GREETING)];
       }
-      return parsed;
+      return normalizeMessages(parsed);
     }
   } catch (error) {
     console.warn("Failed to load messages from localStorage:", error);
   }
-  return [{ role: "assistant", content: "Michael. 😏 You kept me waiting. What do you need?" }];
+  return [createMessage("assistant", INITIAL_ASSISTANT_GREETING)];
 }
 
 function saveMessagesToStorage(messages) {
@@ -328,8 +343,13 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
-  const [voiceOutputSupported, setVoiceOutputSupported] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [audioSupported, setAudioSupported] = useState(false);
   const recognitionRef = useRef(null);
+  const activeAudioRef = useRef(null);
+  const ttsCacheRef = useRef(new Map());
+  const lastVoiceMessageIdRef = useRef(null);
+  const voiceHydratedRef = useRef(false);
   const bottomRef = useRef(null);
   const memoryInitialized = useRef(false);
 
@@ -342,12 +362,18 @@ export default function App() {
   }, [messages]);
 
   useEffect(() => {
+    setMessages((current) => normalizeMessages(current));
+  }, []);
+
+  useEffect(() => {
     fetch(`${API_BASE}/api/memory`)
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data.messages) && data.messages.length) {
-          setMessages(data.messages);
-          saveMessagesToStorage(data.messages);
+          const normalized = normalizeMessages(data.messages);
+          lastVoiceMessageIdRef.current = normalized[normalized.length - 1]?.id || null;
+          setMessages(normalized);
+          saveMessagesToStorage(normalized);
         }
       })
       .catch(() => {})
@@ -405,8 +431,8 @@ export default function App() {
       console.warn('Speech recognition not supported in this browser');
     }
 
-    if ('speechSynthesis' in window) {
-      setVoiceOutputSupported(true);
+    if (typeof window !== 'undefined' && typeof Audio !== 'undefined') {
+      setAudioSupported(true);
     }
   }, []);
 
@@ -416,7 +442,7 @@ export default function App() {
         const due = await fetchJson('/api/reminders/due');
         if (!due?.length) return;
         for (const reminder of due) {
-          setMessages(prev => [...prev, { role: 'assistant', content: formatReminderAlert(reminder.text) }]);
+          setMessages((prev) => [...prev, createMessage('assistant', formatReminderAlert(reminder.text))]);
           if (reminder.recurring !== 'none') {
             const next = new Date(reminder.datetime);
             if (reminder.recurring === 'daily') next.setDate(next.getDate() + 1);
@@ -463,6 +489,76 @@ export default function App() {
       console.error(`Fetch error for ${path}:`, err);
       throw err;
     }
+  }
+
+  function sanitizeSpeechText(text) {
+    return String(text || "")
+      .replace(/https?:\/\/[^\s]+/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  async function fetchTtsAudio(text) {
+    const content = sanitizeSpeechText(text);
+    if (!content) return null;
+
+    try {
+      const result = await fetchJson("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: content })
+      });
+      return result?.audioContent || null;
+    } catch (error) {
+      console.warn("TTS request failed:", error);
+      return null;
+    }
+  }
+
+  function playAudioContent(audioContent) {
+    if (!audioContent || !audioSupported) return;
+
+    if (activeAudioRef.current) {
+      activeAudioRef.current.pause();
+      activeAudioRef.current.currentTime = 0;
+    }
+
+    const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
+    activeAudioRef.current = audio;
+    audio.onended = () => {
+      if (activeAudioRef.current === audio) {
+        activeAudioRef.current = null;
+      }
+    };
+    audio.onerror = () => {
+      if (activeAudioRef.current === audio) {
+        activeAudioRef.current = null;
+      }
+    };
+    audio.play().catch((error) => {
+      console.warn("Audio playback failed:", error);
+    });
+  }
+
+  async function speakAssistantMessage(message, options = {}) {
+    if (!message?.content) return;
+    const { force = false } = options;
+    const messageId = message.id || message.content;
+
+    if (!force && (!voiceEnabled || !audioSupported)) {
+      return;
+    }
+
+    if (ttsCacheRef.current.has(messageId)) {
+      playAudioContent(ttsCacheRef.current.get(messageId));
+      return;
+    }
+
+    const audioContent = await fetchTtsAudio(message.content);
+    if (!audioContent) return;
+
+    ttsCacheRef.current.set(messageId, audioContent);
+    playAudioContent(audioContent);
   }
 
   async function buildContext(text) {
@@ -546,9 +642,10 @@ export default function App() {
   }
 
   function clearConversation() {
-    const initialMessage = { role: "assistant", content: "Michael. 😏 Fresh start. What do you need?" };
+    const initialMessage = createMessage("assistant", "Michael. 😏 Fresh start. What do you need?");
     setMessages([initialMessage]);
     saveMessagesToStorage([initialMessage]);
+    lastVoiceMessageIdRef.current = initialMessage.id;
     fetch(`${API_BASE}/api/memory`, { method: 'DELETE' }).catch(() => {});
     setSettingsOpen(false);
   }
@@ -563,7 +660,7 @@ export default function App() {
     }
 
     const userText = text;
-    const userMsg = { role: "user", content: userText };
+    const userMsg = createMessage("user", userText);
     const updated = [...messages, userMsg];
     const intents = detectIntent(userText);
 
@@ -575,7 +672,7 @@ export default function App() {
       if (intents.sms) {
         const smsBody = extractSmsMessage(userText);
         if (!smsBody) {
-          setMessages([...updated, { role: "assistant", content: `Michael, give me the exact text you want ${assistantName} to send.` }]);
+          setMessages([...updated, createMessage("assistant", `Michael, give me the exact text you want ${assistantName} to send.`)]);
           setLoading(false);
           return;
         }
@@ -584,7 +681,7 @@ export default function App() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: smsBody })
         });
-        setMessages([...updated, { role: "assistant", content: `Done, Michael. I sent it: "${smsBody}"` }]);
+        setMessages([...updated, createMessage("assistant", `Done, Michael. I sent it: "${smsBody}"`)]);
         setLoading(false);
         return;
       }
@@ -592,7 +689,7 @@ export default function App() {
       if (intents.calendarCreate) {
         const event = parseCalendarEventRequest(userText);
         if (!event.date) {
-          setMessages([...updated, { role: "assistant", content: `Michael, I need a date to schedule that event. Try: "Schedule a call with Jake tomorrow at 2pm."` }]);
+          setMessages([...updated, createMessage("assistant", `Michael, I need a date to schedule that event. Try: "Schedule a call with Jake tomorrow at 2pm."`)]);
           setLoading(false);
           return;
         }
@@ -604,12 +701,12 @@ export default function App() {
         });
 
         if (!calendar?.success) {
-          setMessages([...updated, { role: "assistant", content: `Michael, something went wrong — the event was not created. Error: ${calendar?.error || 'Unknown error'}` }]);
+          setMessages([...updated, createMessage("assistant", `Michael, something went wrong — the event was not created. Error: ${calendar?.error || 'Unknown error'}`)]);
           setLoading(false);
           return;
         }
 
-        setMessages([...updated, { role: "assistant", content: `Done, Michael. I created "${calendar.event.title}" on ${calendar.event.when}.` }]);
+        setMessages([...updated, createMessage("assistant", `Done, Michael. I created "${calendar.event.title}" on ${calendar.event.when}.`)]);
         setLoading(false);
         return;
       }
@@ -617,12 +714,12 @@ export default function App() {
       if (intents.reminder) {
         const parsed = parseReminderRequest(userText);
         if (!parsed.hasTime) {
-          setMessages([...updated, { role: 'assistant', content: `Michael, I need a time for that. Try: "Remind me at 3pm to pick up the kids."` }]);
+          setMessages([...updated, createMessage('assistant', `Michael, I need a time for that. Try: "Remind me at 3pm to pick up the kids."`)]);
           setLoading(false);
           return;
         }
         if (!parsed.datetime) {
-          setMessages([...updated, { role: 'assistant', content: `Something's off with that date, Michael. Try again with a clearer time.` }]);
+          setMessages([...updated, createMessage('assistant', `Something's off with that date, Michael. Try again with a clearer time.`)]);
           setLoading(false);
           return;
         }
@@ -635,16 +732,16 @@ export default function App() {
           const when = new Date(parsed.datetime).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
           const recurringNote = parsed.recurring !== 'none' ? `, repeating ${parsed.recurring}` : '';
           const contextMsg = `[Action: Created reminder — "${result.reminder.text}" on ${when}${recurringNote}. Confirm casually in Aria's voice.]`;
-          const messagesForApi = [...messages, { role: 'user', content: `${userText}\n\n${contextMsg}` }];
+          const messagesForApi = [...messages, createMessage('user', `${userText}\n\n${contextMsg}`)];
           const chat = await fetchJson('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ model: 'claude-sonnet-4-20250514', system: buildSystemPrompt(assistantName, renamePending), messages: messagesForApi })
           });
-          setMessages([...updated, { role: 'assistant', content: chat.reply || 'Done.' }]);
+          setMessages([...updated, createMessage('assistant', chat.reply || 'Done.')]);
           if (renamePending) setRenamePending(false);
         } catch (e) {
-          setMessages([...updated, { role: 'assistant', content: `Couldn't set that reminder, Michael. ${e.message}` }]);
+          setMessages([...updated, createMessage('assistant', `Couldn't set that reminder, Michael. ${e.message}`)]);
         }
         setLoading(false);
         return;
@@ -700,7 +797,7 @@ export default function App() {
           contextMsg = `[List error: ${e.message}]`;
         }
 
-        const messagesForApi = [...messages, { role: 'user', content: `${userText}\n\n${contextMsg}` }];
+        const messagesForApi = [...messages, createMessage('user', `${userText}\n\n${contextMsg}`)];
         const chat = await fetchJson('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -710,7 +807,7 @@ export default function App() {
             messages: messagesForApi
           })
         });
-        setMessages([...updated, { role: 'assistant', content: chat.reply || 'Something went wrong.' }]);
+        setMessages([...updated, createMessage('assistant', chat.reply || 'Something went wrong.')]);
         if (renamePending) setRenamePending(false);
         setLoading(false);
         return;
@@ -718,7 +815,7 @@ export default function App() {
 
       const context = await buildContext(userText);
       const enrichedUserText = context ? `${userText}\n\n${context}` : userText;
-      const messagesForApi = [...messages, { role: "user", content: enrichedUserText }];
+      const messagesForApi = [...messages, createMessage("user", enrichedUserText)];
 
       const chat = await fetchJson("/api/chat", {
         method: "POST",
@@ -730,39 +827,44 @@ export default function App() {
         })
       });
 
-      setMessages([...updated, { role: "assistant", content: chat.reply || "Something went wrong." }]);
+      setMessages([...updated, createMessage("assistant", chat.reply || "Something went wrong.")]);
       if (renamePending) setRenamePending(false);
     } catch (error) {
       console.error("Chat API Error:", error);
-      setMessages([...updated, { role: "assistant", content: `Lost connection. (Error: ${error.message})` }]);
+      setMessages([...updated, createMessage("assistant", `Lost connection. (Error: ${error.message})`)]);
     }
 
     setLoading(false);
   }
 
   useEffect(() => {
-    const speak = (text) => {
-      if (!voiceOutputSupported || !window.speechSynthesis || !text) return;
-      const content = text.replace(/https?:\/\/[^\s]+/g, '').trim();
-      if (!content) return;
-
-      const utterance = new SpeechSynthesisUtterance(content);
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length) {
-        const preferred = voices.find((voice) => /female|woman|zira|samantha|alloy|quinn|google/i.test(voice.name));
-        utterance.voice = preferred || voices[0];
-      }
-      utterance.rate = 1;
-      utterance.pitch = 1.05;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
-    };
-
     const last = messages[messages.length - 1];
-    if (last?.role === "assistant" && !loading) {
-      speak(last.content);
+    if (!last?.id) return;
+
+    if (!voiceHydratedRef.current) {
+      voiceHydratedRef.current = true;
+      lastVoiceMessageIdRef.current = last.role === "assistant" ? last.id : null;
+      return;
     }
-  }, [messages, voiceOutputSupported, loading]);
+
+    if (last.role !== "assistant") return;
+
+    if (loading) {
+      return;
+    }
+
+    if (lastVoiceMessageIdRef.current === last.id) {
+      return;
+    }
+
+    if (!voiceEnabled || !audioSupported) {
+      lastVoiceMessageIdRef.current = last.id;
+      return;
+    }
+
+    lastVoiceMessageIdRef.current = last.id;
+    speakAssistantMessage(last).catch(() => {});
+  }, [messages, loading, voiceEnabled, audioSupported]);
 
   function renderMessage(content) {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -787,6 +889,13 @@ export default function App() {
               <div style={{ color:"white", fontWeight:"700", fontSize:"17px" }}>{assistantName}</div>
               <div style={{ color:"rgba(255,255,255,0.85)", fontSize:"11px" }}>{headerSubtitle}</div>
             </div>
+            <button
+              onClick={() => setVoiceEnabled((enabled) => !enabled)}
+              style={{ background: voiceEnabled ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.08)", color:"white", border:"1px solid rgba(255,255,255,0.28)", borderRadius:"12px", width:"34px", height:"34px", fontSize:"16px", cursor:"pointer" }}
+              aria-label={voiceEnabled ? "Mute voice output" : "Unmute voice output"}
+            >
+              {voiceEnabled ? "🔊" : "🔇"}
+            </button>
             <button
               onClick={() => setSettingsOpen((open) => !open)}
               style={{ background:"rgba(255,255,255,0.16)", color:"white", border:"1px solid rgba(255,255,255,0.28)", borderRadius:"12px", width:"34px", height:"34px", fontSize:"16px", cursor:"pointer" }}
@@ -840,22 +949,58 @@ export default function App() {
           </div>
         )}
         {messages.map((m, i) => (
-          <div key={i} style={{ display:"flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", alignItems:"flex-end", gap:"8px" }}>
+          <div key={m.id || i} style={{ display:"flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", alignItems:"flex-end", gap:"8px" }}>
             {m.role === "assistant" && (
               <img src={AVATAR} alt={assistantName} style={{ width:"28px", height:"28px", borderRadius:"50%", objectFit:"cover", objectPosition:"top", flexShrink:0, transition:"transform 0.3s ease", transform: loading && i === messages.length - 1 ? "scale(1.3)" : "scale(1)" }} />
             )}
-            <div style={{
-              maxWidth:"78%", padding:"10px 14px",
-              borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-              fontSize:"14px", lineHeight:"1.55",
-              background: m.role === "user" ? "linear-gradient(135deg, #7F77DD, #534AB7)" : "#ffffff",
-              color: m.role === "user" ? "#ffffff" : "#222222",
-              WebkitTextFillColor: m.role === "user" ? "#ffffff" : "#222222",
-              boxShadow:"0 1px 6px rgba(0,0,0,0.08)",
-              whiteSpace:"pre-wrap"
-            }}>
-              {renderMessage(m.content)}
-            </div>
+            {m.role === "assistant" ? (
+              <div style={{ display:"flex", alignItems:"flex-end", gap:"6px", maxWidth:"78%" }}>
+                <div style={{
+                  padding:"10px 14px",
+                  borderRadius:"18px 18px 18px 4px",
+                  fontSize:"14px", lineHeight:"1.55",
+                  background:"#ffffff",
+                  color:"#222222",
+                  WebkitTextFillColor:"#222222",
+                  boxShadow:"0 1px 6px rgba(0,0,0,0.08)",
+                  whiteSpace:"pre-wrap"
+                }}>
+                  {renderMessage(m.content)}
+                </div>
+                <button
+                  onClick={() => speakAssistantMessage(m, { force: true })}
+                  disabled={!audioSupported}
+                  aria-label="Replay voice"
+                  style={{
+                    width:"28px",
+                    height:"28px",
+                    borderRadius:"50%",
+                    border:"1px solid #ddd",
+                    background:"#fff",
+                    color:"#534AB7",
+                    cursor: audioSupported ? "pointer" : "default",
+                    flexShrink:0,
+                    fontSize:"14px",
+                    opacity: audioSupported ? 1 : 0.5
+                  }}
+                >
+                  🔊
+                </button>
+              </div>
+            ) : (
+              <div style={{
+                maxWidth:"78%", padding:"10px 14px",
+                borderRadius:"18px 18px 4px 18px",
+                fontSize:"14px", lineHeight:"1.55",
+                background:"linear-gradient(135deg, #7F77DD, #534AB7)",
+                color:"#ffffff",
+                WebkitTextFillColor:"#ffffff",
+                boxShadow:"0 1px 6px rgba(0,0,0,0.08)",
+                whiteSpace:"pre-wrap"
+              }}>
+                {renderMessage(m.content)}
+              </div>
+            )}
           </div>
         ))}
         {loading && (
