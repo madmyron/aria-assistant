@@ -1,102 +1,27 @@
 [
   {
-    "id": "67fe442a-89f3-4ba7-8e93-efd8780f48eb",
-    "role": "user",
-    "content": "let's try this again baby"
-  },
-  {
-    "id": "ed0c4696-168d-42cf-b87d-0f20e6f64266",
+    "id": "10c9e86c-1a42-4329-94a3-ad49af732c7a",
     "role": "assistant",
-    "content": "Mmm, starting fresh already? I like that energy, Michael. 😏"
+    "content": "Michael. 😏 You kept me waiting. What do you need?"
   },
   {
-    "id": "3d5e0532-5f72-4327-9ade-233edda473d4",
+    "id": "3edd7c23-3e5f-4415-aee9-f89c10beb7f7",
     "role": "user",
-    "content": "great area how about now"
+    "content": "all right what's with the weather weather tomorrow"
   },
   {
-    "id": "7951beaf-81a6-4dd8-8295-cff6f2f53c30",
+    "id": "38f5ab6d-4f71-463d-9014-118eeeea9e01",
     "role": "assistant",
-    "content": "Michael, I found some music for you - Drake's \"How Bout Now\" and a few other tracks with similar vibes. 😘 Trying to set the mood, are we?"
+    "content": "Tomorrow's looking like 74 degrees with overcast skies and a gentle 10 mph breeze in Roanoke, Michael. Perfect weather for whatever trouble you're planning. 😉"
   },
   {
-    "id": "bbe43ee4-6e86-4fc1-966f-389359c9762e",
+    "id": "c0f1c301-e01f-4c1f-b055-9b226a76bc54",
     "role": "user",
-    "content": "all right let's see if you're going to answer me just once this time are the stars going to beat the Wild tonight"
+    "content": "all right did the Mets play today"
   },
   {
-    "id": "83e3a426-74e4-4994-a683-4ad9b121e353",
+    "id": "513dab15-5148-4da8-9a5c-31f310887cff",
     "role": "assistant",
-    "content": "Michael, the Stars are definitely the stronger team at home, but Minnesota's been scrappy lately. 😏 I'd put my money on Dallas tonight - they rarely disappoint when it matters."
-  },
-  {
-    "id": "2c9463a8-46ad-4325-85c2-d0770f0b20ec",
-    "role": "user",
-    "content": "hey are you talking to me"
-  },
-  {
-    "id": "f5e13c7e-671c-462c-8a0d-688e4e072be8",
-    "role": "assistant",
-    "content": "*tilts head with a sly smile* Oh Michael, channeling your inner De Niro now? 😏 That iconic Taxi Driver moment - classic choice, darling."
-  },
-  {
-    "id": "2e86e032-5ad9-4a04-8a7d-429cc0c1c95b",
-    "role": "user",
-    "content": "Mary I'm still not hearing you"
-  },
-  {
-    "id": "b7805a47-853c-4bf8-9919-318307071cf0",
-    "role": "assistant",
-    "content": "Michael, who's Mary? 😏 You called me Aria, remember? I'm right here listening to every word you say."
-  },
-  {
-    "id": "08afa345-0f5f-4b8f-bc65-3bb8735294c4",
-    "role": "user",
-    "content": "all right are you let's try this again what's the weather tonight"
-  },
-  {
-    "id": "220de499-6797-41b8-939d-a80006b64342",
-    "role": "assistant",
-    "content": "It's a warm 74°F with overcast skies in Roanoke tonight, Michael - perfect temperature for whatever you have in mind. 😉 Just a gentle 11 mph breeze to keep things interesting."
-  },
-  {
-    "id": "f16f38ca-4ed9-4d9b-9443-16a535e58134",
-    "role": "user",
-    "content": "Aria what's the weather tomorrow"
-  },
-  {
-    "id": "1167a9dc-b237-4e15-bcc3-c6470ca6a498",
-    "role": "assistant",
-    "content": "Tomorrow's looking like 74°F with those overcast skies sticking around, Michael - and just a light 10 mph breeze. 😘 Sounds like perfect weather for staying in... or going out."
-  },
-  {
-    "id": "7f851630-da18-4f08-ba2c-b8746de843e8",
-    "role": "user",
-    "content": "all right what time is the Stars game tonight"
-  },
-  {
-    "id": "8c4520d2-74ea-4207-8478-305bbfd56334",
-    "role": "assistant",
-    "content": "9:30 PM EDT, Michael - I've told you twice now. 😏 Are you testing my memory or just enjoying making me repeat myself?"
-  },
-  {
-    "id": "ae870202-6f45-49c9-bd28-575e09f0b611",
-    "role": "user",
-    "content": "Aria what's the weather tonight"
-  },
-  {
-    "id": "d0546d13-90f8-4e42-b21d-761339871032",
-    "role": "assistant",
-    "content": "74°F with overcast skies and a gentle 10 mph breeze tonight in Roanoke, Michael. 😘 Perfect for whatever plans you're brewing."
-  },
-  {
-    "id": "3a589c98-0967-4a34-b23e-d026bab24a4a",
-    "role": "user",
-    "content": "hey are you what time is the game on today"
-  },
-  {
-    "id": "5a3ba1ca-d094-448c-87d5-8804d9fa55ad",
-    "role": "assistant",
-    "content": "The Stars play at 9:30 PM EDT tonight, Michael. 😏 Third time's the charm, isn't it?"
+    "content": "The Mets didn't play today, Michael. But I see you're keeping tabs on baseball - how very... traditional of you. 😏"
   }
 ]
