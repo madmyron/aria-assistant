@@ -344,7 +344,6 @@ export default function App() {
   const [listening, setListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [audioSupported, setAudioSupported] = useState(false);
   const recognitionRef = useRef(null);
   const activeAudioRef = useRef(null);
   const ttsCacheRef = useRef(new Map());
@@ -428,9 +427,6 @@ export default function App() {
       console.warn('Speech recognition not supported in this browser');
     }
 
-    if (typeof window !== 'undefined' && typeof Audio !== 'undefined') {
-      setAudioSupported(true);
-    }
   }, []);
 
   useEffect(() => {
@@ -527,13 +523,12 @@ export default function App() {
   function playAudioContent(audioContent) {
     console.log("[TTS] playAudioContent start", {
       hasAudioContent: Boolean(audioContent),
-      audioLength: audioContent?.length || 0,
-      audioSupported
+      audioLength: audioContent?.length || 0
     });
 
-    if (!audioContent || !audioSupported) {
+    if (!audioContent) {
       console.log("[TTS] playAudioContent aborted", {
-        reason: !audioContent ? "missing audio" : "audio unsupported"
+        reason: "missing audio"
       });
       return;
     }
@@ -575,23 +570,13 @@ export default function App() {
     const { force = false } = options;
     const messageId = message.id || message.content;
     const audioKey = `${messageId}::${sanitizeSpeechText(message.content)}`;
-    console.log("[TTS] speakAssistantMessage", { messageId, force, audioKey, voiceEnabled, audioSupported });
+    console.log("[TTS] speakAssistantMessage", { messageId, force, audioKey, voiceEnabled });
 
     if (!force) {
       if (!voiceEnabled) {
         console.log("[TTS] speakAssistantMessage skipped", {
           voiceEnabled,
-          audioSupported,
           reason: "voice disabled"
-        });
-        return;
-      }
-
-      if (!audioSupported) {
-        console.log("[TTS] speakAssistantMessage skipped", {
-          voiceEnabled,
-          audioSupported,
-          reason: "audio unsupported"
         });
         return;
       }
@@ -1014,7 +999,6 @@ export default function App() {
                 </div>
                 <button
                   onClick={() => speakAssistantMessage(m, { force: true })}
-                  disabled={!audioSupported}
                   aria-label="Replay voice"
                   style={{
                     width:"28px",
@@ -1023,10 +1007,10 @@ export default function App() {
                     border:"1px solid #ddd",
                     background:"#fff",
                     color:"#534AB7",
-                    cursor: audioSupported ? "pointer" : "default",
+                    cursor:"pointer",
                     flexShrink:0,
                     fontSize:"14px",
-                    opacity: audioSupported ? 1 : 0.5
+                    opacity:1
                   }}
                 >
                   🔊
