@@ -161,12 +161,36 @@ function getHeader(headers = [], name) {
 }
 
 function sanitizeClaudeMessages(messages = []) {
-  return messages
-    .filter((message) => message && typeof message.role === 'string' && typeof message.content === 'string')
-    .map((message) => ({
-      role: message.role,
-      content: message.content
-    }));
+  const sanitized = [];
+  let lastKey = '';
+
+  for (const message of messages) {
+    if (!message || typeof message.role !== 'string' || typeof message.content !== 'string') {
+      continue;
+    }
+
+    const role = message.role;
+    const content = message.content;
+    const key = `${role}\u0000${content}`;
+
+    if (key === lastKey) {
+      continue;
+    }
+
+    sanitized.push({ role, content });
+    lastKey = key;
+  }
+
+  return sanitized;
+}
+
+function sanitizeTextForTts(text = '') {
+  return String(text)
+    .replace(/:[a-z0-9_+\-]+:/gi, ' ')
+    .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\uFE0F\u200D]/gu, '')
+    .replace(/[^\p{L}\p{N}\s.,!?'"()\-:;@/#&%$+]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 app.get('/api/lists', (_req, res) => {
@@ -284,7 +308,8 @@ app.post('/api/tts', async (req, res) => {
     }
 
     const text = String(req.body?.text || '').trim();
-    if (!text) {
+    const cleanText = sanitizeTextForTts(text);
+    if (!cleanText) {
       return res.status(400).json({ error: 'text is required' });
     }
 
@@ -296,7 +321,7 @@ app.post('/api/tts', async (req, res) => {
         'accept': 'audio/mpeg'
       },
       body: JSON.stringify({
-        text,
+        text: cleanText,
         model_id: 'eleven_monolingual_v1',
         voice_settings: {
           stability: 0.4,
