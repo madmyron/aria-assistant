@@ -164,6 +164,15 @@ function getHeader(headers = [], name) {
   return headers.find((header) => header.name?.toLowerCase() === name.toLowerCase())?.value || '';
 }
 
+function sanitizeClaudeMessages(messages = []) {
+  return messages
+    .filter((message) => message && typeof message.role === 'string' && typeof message.content === 'string')
+    .map((message) => ({
+      role: message.role,
+      content: message.content
+    }));
+}
+
 app.get('/api/lists', (_req, res) => {
   res.json(readLists());
 });
@@ -318,7 +327,7 @@ app.post('/api/chat', async (req, res) => {
       model: req.body?.model || 'claude-sonnet-4-20250514',
       max_tokens: 400,
       system: req.body?.system || '',
-      messages: Array.isArray(req.body?.messages) ? req.body.messages : []
+      messages: Array.isArray(req.body?.messages) ? sanitizeClaudeMessages(req.body.messages) : []
     };
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {

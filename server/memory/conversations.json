@@ -1,70 +1,97 @@
 [
   {
+    "id": "05a74605-e630-4e15-949f-49605422b22c",
     "role": "assistant",
     "content": "Michael. 😏 You kept me waiting. What do you need?"
   },
   {
+    "id": "a3208fa3-1c6d-46ec-8592-d7047ee28aaa",
     "role": "user",
     "content": "When does public skate start at nytex today"
   },
   {
+    "id": "fafaec4d-f2a3-494b-8727-50a32581311d",
     "role": "assistant",
     "content": "Lost connection."
   },
   {
+    "id": "134a84c2-afe8-42f0-bd66-d5ada186503a",
     "role": "user",
     "content": "when does public skate start at nytex today"
   },
   {
+    "id": "d7e4d3e0-d40b-40d0-a25a-d139304b7dc9",
     "role": "assistant",
     "content": "Lost connection."
   },
   {
+    "id": "9961d04f-bb50-4d84-9110-de9adda0873d",
     "role": "user",
     "content": "when is public skate at nytex today"
   },
   {
+    "id": "33b298c7-3419-4914-8735-3c4e53f57331",
     "role": "assistant",
     "content": "Lost connection. (Error: invalid_grant)"
   },
   {
+    "id": "318d1ecb-9173-4606-8251-efa3f5100aeb",
     "role": "user",
     "content": "can you check the internet and let me know when the nytex public skate is today?"
   },
   {
+    "id": "67cdd43c-dd8a-4b6d-bd81-0722853908ef",
     "role": "assistant",
     "content": "I can't browse the internet in real-time, Michael. You'll have to check NYTEX's website or give them a call yourself. 😘"
   },
   {
+    "id": "816dfeda-d72a-4fee-bec4-41d2069f346d",
     "role": "user",
     "content": "When does public skate start at NYTEX?"
   },
   {
+    "id": "22af1274-1505-4306-8d7e-3938063edf89",
     "role": "assistant",
     "content": "Nearly every Friday from 6:45-8:15 pm for $17, Michael. Better check their schedule to make sure it's happening today though. 😉"
   },
   {
+    "id": "9c85590a-b19a-48f0-8fa4-1591d5a3f193",
     "role": "user",
     "content": "what time is the power skating clinic"
   },
   {
+    "id": "7b53ab6a-b9c5-4b80-939d-fa31eff62033",
     "role": "assistant",
     "content": "Those search results show different rinks and dates, Michael. You'll need to be more specific about which power skating clinic you're asking about. 😏"
   },
   {
+    "id": "e1798e4d-7359-4a4b-b03a-174b9f91ad4e",
     "role": "user",
     "content": "nytex"
   },
   {
+    "id": "3e1c8e89-26ac-4ce9-b4c6-e49fa1e390e1",
     "role": "assistant",
     "content": "I don't see power skating clinic times in those results, Michael. You'll need to call them at (817) 336-4423 or check their full schedule. 😘"
   },
   {
+    "id": "4b427965-7596-453a-84b7-b84c0794dc1c",
     "role": "user",
     "content": "what time is the power skating clinic at nytex today"
   },
   {
+    "id": "9bbb2280-2753-47c8-ac68-4421eeb7221b",
     "role": "assistant",
     "content": "I don't see power skating clinic times in those results, Michael. You'll have to dig deeper on their site or call them directly. 😉"
+  },
+  {
+    "id": "40a2c154-aa11-4374-8906-36e641c25d61",
+    "role": "user",
+    "content": "what's the weather today"
+  },
+  {
+    "id": "2317c9f5-3ed4-41a6-b38c-1fc67b7b522e",
+    "role": "assistant",
+    "content": "Lost connection. (Error: messages.0.id: Extra inputs are not permitted)"
   }
 ]
