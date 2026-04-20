@@ -6,6 +6,7 @@ const AVATAR = ellyAvatar;
 const DEFAULT_NAME = "Aria";
 let ttsAudio = null;
 let ttsPlaying = false;
+let sendMessageInProgress = false;
 const INITIAL_ASSISTANT_GREETING = "Michael. 😏 You kept me waiting. What do you need?";
 
 function createMessage(role, content) {
@@ -659,36 +660,38 @@ export default function App() {
   }
 
   async function sendMessage(overrideText) {
-    console.log('sendMessage called with:', overrideText);
-    const text = typeof overrideText === 'string' ? overrideText.trim() : input.trim();
-    console.log('final text to send:', text);
-    if (!text || loading) {
-      console.log('sendMessage aborted - no text or loading');
-      return;
-    }
-
-    let assistantReplySent = false;
-    const userText = text;
-    const userMsg = createMessage("user", userText);
-    const updated = [...messages, userMsg];
-    const intents = detectIntent(userText);
-    const appendAssistantReply = async (replyText) => {
-      if (assistantReplySent) {
-        console.warn("[sendMessage] appendAssistantReply skipped: reply already sent", { replyText });
+    if (sendMessageInProgress) return;
+    sendMessageInProgress = true;
+    try {
+      console.log('sendMessage called with:', overrideText);
+      const text = typeof overrideText === 'string' ? overrideText.trim() : input.trim();
+      console.log('final text to send:', text);
+      if (!text || loading) {
+        console.log('sendMessage aborted - no text or loading');
         return;
       }
-      assistantReplySent = true;
-      console.log("[sendMessage] appendAssistantReply", { replyText });
-      const assistantMessage = createMessage("assistant", replyText);
-      setMessages([...updated, assistantMessage]);
-      await speak(assistantMessage.content);
-    };
 
-    setMessages(updated);
-    if (!overrideText) setInput("");
-    setLoading(true);
+      let assistantReplySent = false;
+      const userText = text;
+      const userMsg = createMessage("user", userText);
+      const updated = [...messages, userMsg];
+      const intents = detectIntent(userText);
+      const appendAssistantReply = async (replyText) => {
+        if (assistantReplySent) {
+          console.warn("[sendMessage] appendAssistantReply skipped: reply already sent", { replyText });
+          return;
+        }
+        assistantReplySent = true;
+        console.log("[sendMessage] appendAssistantReply", { replyText });
+        const assistantMessage = createMessage("assistant", replyText);
+        setMessages([...updated, assistantMessage]);
+        await speak(assistantMessage.content);
+      };
 
-    try {
+      setMessages(updated);
+      if (!overrideText) setInput("");
+      setLoading(true);
+
       if (intents.sms) {
         const smsBody = extractSmsMessage(userText);
         if (!smsBody) {
@@ -861,9 +864,10 @@ export default function App() {
     } catch (error) {
       console.error("Chat API Error:", error);
       await appendAssistantReply(`Lost connection. (Error: ${error.message})`);
+    } finally {
+      setLoading(false);
+      sendMessageInProgress = false;
     }
-
-    setLoading(false);
   }
 
   function renderMessage(content) {
