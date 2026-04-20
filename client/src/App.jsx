@@ -660,6 +660,7 @@ export default function App() {
   }
 
   async function sendMessage(overrideText) {
+    console.trace('[sendMessage] called');
     if (sendMessageInProgress) return;
     sendMessageInProgress = true;
     try {
