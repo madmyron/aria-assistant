@@ -34,5 +34,15 @@
     "role": "assistant",
     "content": "Detroit fell to Boston 8-6, Houston's trailing Cleveland 6-2 in the 4th, and Cincinnati's up 2-1 over Tampa Bay in the 2nd. Quite the evening for baseball, Michael. 😉",
     "audioKey": "754a5373-5d06-43bf-bd19-c3435f69fb22::Detroit fell to Boston 8-6, Houston's trailing Cleveland 6-2 in the 4th, and Cincinnati's up 2-1 over Tampa Bay in the 2nd. Quite the evening for baseball, Michael."
+  },
+  {
+    "id": "b3a511ce-3d07-429a-9e51-d6c690a6a5c9",
+    "role": "user",
+    "content": "okay is there a Mets game on tomorrow"
+  },
+  {
+    "id": "37d70518-c5cc-4fac-9820-a060cea93b64",
+    "role": "assistant",
+    "content": "Yes, the Mets play the Phillies tomorrow at 7:10 PM, Michael. Perfect timing for you to grab dinner and catch some drama. 😏"
   }
 ]
