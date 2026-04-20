@@ -406,15 +406,25 @@ export default function App() {
           console.log('Voice recognition ignored while Aria is speaking');
           return;
         }
-        const transcript = event.results?.[0]?.[0]?.transcript?.trim();
-        console.log('Voice recognition result:', transcript);
-        if (transcript) {
-          const text = transcript.trim();
-          console.log('Processing voice input:', text);
-          // Always send the message directly - no wake phrase required
-          sendMessage(text);
-        } else {
-          console.log('No transcript received');
+        let handledFinalResult = false;
+        for (let i = event.resultIndex || 0; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (!result?.isFinal) {
+            console.log('Voice recognition ignored non-final result');
+            continue;
+          }
+          const transcript = result?.[0]?.transcript?.trim();
+          console.log('Voice recognition final result:', transcript);
+          if (transcript) {
+            const text = transcript.trim();
+            console.log('Processing voice input:', text);
+            // Always send the message directly - no wake phrase required
+            sendMessage(text);
+            handledFinalResult = true;
+          }
+        }
+        if (!handledFinalResult) {
+          console.log('No final transcript received');
         }
       };
       recognition.onerror = (event) => {
@@ -435,6 +445,18 @@ export default function App() {
       console.warn('Speech recognition not supported in this browser');
     }
 
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onstart = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onend = null;
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+        recognitionRef.current = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
