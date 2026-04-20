@@ -345,7 +345,8 @@ export default function App() {
   const [speechSupported, setSpeechSupported] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const recognitionRef = useRef(null);
-  const activeAudioRef = useRef(null);
+  const currentAudioRef = useRef(null);
+  const shouldResumeListeningRef = useRef(false);
   const ttsCacheRef = useRef(new Map());
   const bottomRef = useRef(null);
   const memoryInitialized = useRef(false);
@@ -357,6 +358,16 @@ export default function App() {
   useEffect(() => {
     saveMessagesToStorage(messages);
   }, [messages]);
+
+  useEffect(() => {
+    if (voiceEnabled) return;
+    if (!currentAudioRef.current) return;
+    console.log("[TTS] voice disabled, stopping current audio");
+    currentAudioRef.current.pause();
+    currentAudioRef.current.currentTime = 0;
+    currentAudioRef.current = null;
+    shouldResumeListeningRef.current = false;
+  }, [voiceEnabled]);
 
   useEffect(() => {
     setMessages((current) => normalizeMessages(current));
@@ -485,7 +496,11 @@ export default function App() {
   }
 
   function sanitizeSpeechText(text) {
-    const cleaned = String(text || "")
+    const normalized = String(text || "")
+      .replace(/(\d+(?:\.\d+)?)\s*°\s*f\b/gi, "$1 degrees Fahrenheit")
+      .replace(/(\d+(?:\.\d+)?)\s*°\s*c\b/gi, "$1 degrees Celsius");
+
+    const cleaned = normalized
       .replace(/https?:\/\/[^\s]+/g, "")
       .replace(/\*[^*]+\*/g, " ")
       .replace(/:[a-z0-9_+\-]+:/gi, " ")
@@ -533,27 +548,40 @@ export default function App() {
       return;
     }
 
-    if (activeAudioRef.current) {
+    if (currentAudioRef.current) {
       console.log("[TTS] stopping previous audio");
-      activeAudioRef.current.pause();
-      activeAudioRef.current.currentTime = 0;
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+      currentAudioRef.current = null;
     }
 
     const audioUrl = "data:audio/mp3;base64," + audioContent;
     console.log("[TTS] creating Audio object");
     const audio = new Audio(audioUrl);
-    activeAudioRef.current = audio;
+    currentAudioRef.current = audio;
     audio.onended = () => {
       console.log("[TTS] audio ended");
-      if (activeAudioRef.current === audio) {
-        activeAudioRef.current = null;
+      if (currentAudioRef.current === audio) {
+        currentAudioRef.current = null;
+      }
+      if (shouldResumeListeningRef.current && recognitionRef.current && !listening) {
+        console.log("[TTS] restarting voice recognition after audio ended");
+        shouldResumeListeningRef.current = false;
+        try {
+          recognitionRef.current.start();
+        } catch (error) {
+          console.warn("[TTS] failed to restart voice recognition", error);
+        }
+      } else {
+        shouldResumeListeningRef.current = false;
       }
     };
     audio.onerror = () => {
       console.warn("[TTS] audio error");
-      if (activeAudioRef.current === audio) {
-        activeAudioRef.current = null;
+      if (currentAudioRef.current === audio) {
+        currentAudioRef.current = null;
       }
+      shouldResumeListeningRef.current = false;
     };
     console.log("[TTS] calling audio.play()");
     audio.play()
@@ -562,6 +590,17 @@ export default function App() {
       })
       .catch((error) => {
         console.warn("[TTS] audio.play() failed:", error);
+        if (shouldResumeListeningRef.current && recognitionRef.current && !listening) {
+          console.log("[TTS] restarting voice recognition after audio.play() failure");
+          shouldResumeListeningRef.current = false;
+          try {
+            recognitionRef.current.start();
+          } catch (restartError) {
+            console.warn("[TTS] failed to restart voice recognition after play failure", restartError);
+          }
+        } else {
+          shouldResumeListeningRef.current = false;
+        }
       });
   }
 
@@ -589,9 +628,19 @@ export default function App() {
     }
 
     console.log("[TTS] cache miss, fetching audio");
+    shouldResumeListeningRef.current = listening;
+    if (recognitionRef.current && listening) {
+      console.log("[TTS] pausing voice recognition before speech");
+      try {
+        recognitionRef.current.stop();
+      } catch (error) {
+        console.warn("[TTS] failed to stop voice recognition", error);
+      }
+    }
     const audioContent = await fetchTtsAudio(message.content);
     if (!audioContent) {
       console.log("[TTS] no audio returned from /api/tts");
+      shouldResumeListeningRef.current = false;
       return;
     }
 
