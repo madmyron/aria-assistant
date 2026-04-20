@@ -510,6 +510,7 @@ export default function App() {
   }
 
   async function speak(text) {
+    console.trace('[TTS] speak called');
     const cleanedText = sanitizeSpeechText(text);
     console.log("[TTS] speak", { voiceOn, cleanedText });
     if (!voiceOn) return;
