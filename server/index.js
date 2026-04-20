@@ -60,10 +60,6 @@ function getAnthropicKey() {
   return process.env.VITE_ANTHROPIC_KEY || '';
 }
 
-function getGoogleTtsKey() {
-  return process.env.GOOGLE_TTS_API_KEY || '';
-}
-
 function parseGoogleAccounts() {
   const accounts = new Map();
   const raw = process.env.GOOGLE_ACCOUNTS;
@@ -277,9 +273,14 @@ app.post('/api/sms', async (req, res) => {
 
 app.post('/api/tts', async (req, res) => {
   try {
-    const apiKey = getGoogleTtsKey();
+    const apiKey = process.env.ELEVENLABS_API_KEY || '';
+    const voiceId = process.env.ELEVENLABS_VOICE_ID || '';
     if (!apiKey) {
-      return res.status(500).json({ error: 'Google TTS API key is missing' });
+      return res.status(500).json({ error: 'ElevenLabs API key is missing' });
+    }
+
+    if (!voiceId) {
+      return res.status(500).json({ error: 'ElevenLabs voice ID is missing' });
     }
 
     const text = String(req.body?.text || '').trim();
@@ -287,32 +288,35 @@ app.post('/api/tts', async (req, res) => {
       return res.status(400).json({ error: 'text is required' });
     }
 
-    const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'xi-api-key': apiKey,
+        'accept': 'audio/mpeg'
       },
       body: JSON.stringify({
-        input: { text },
-        voice: {
-          languageCode: 'en-US',
-          name: 'en-US-Neural2-F'
+        text,
+        model_id: 'eleven_monolingual_v1',
+        voice_settings: {
+          stability: 0.4,
+          similarity_boost: 0.85
         },
-        audioConfig: {
-          audioEncoding: 'MP3',
-          speakingRate: 1.05
-        }
       })
     });
 
-    const data = await response.json();
     if (!response.ok) {
-      return res.status(response.status).json({ error: data?.error?.message || 'Google TTS request failed' });
+      const errorText = await response.text();
+      return res.status(response.status).json({
+        error: errorText || 'ElevenLabs request failed'
+      });
     }
 
-    res.json({ audioContent: data.audioContent || '' });
+    const arrayBuffer = await response.arrayBuffer();
+    const audioContent = Buffer.from(arrayBuffer).toString('base64');
+    res.json({ audioContent });
   } catch (error) {
-    res.status(500).json({ error: error.message || 'Google TTS request failed' });
+    res.status(500).json({ error: error.message || 'ElevenLabs request failed' });
   }
 });
 

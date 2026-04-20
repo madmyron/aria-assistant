@@ -73,6 +73,8 @@ Make sure to set these in your deployment platform:
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `GOOGLE_REFRESH_TOKEN` (or `GOOGLE_ACCOUNTS`)
+- `ELEVENLABS_API_KEY`
+- `ELEVENLABS_VOICE_ID`
 
 ## Mobile Access
 
