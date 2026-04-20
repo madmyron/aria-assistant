@@ -519,6 +519,7 @@ export default function App() {
     }
 
     try {
+      console.log("[TTS] exact text sent to ElevenLabs:", content);
       console.log("[TTS] POST /api/tts");
       const result = await fetchJson("/api/tts", {
         method: "POST",
