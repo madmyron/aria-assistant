@@ -34,5 +34,37 @@
   {
     "role": "assistant",
     "content": "I can't browse the internet in real-time, Michael. You'll have to check NYTEX's website or give them a call yourself. 😘"
+  },
+  {
+    "role": "user",
+    "content": "When does public skate start at NYTEX?"
+  },
+  {
+    "role": "assistant",
+    "content": "Nearly every Friday from 6:45-8:15 pm for $17, Michael. Better check their schedule to make sure it's happening today though. 😉"
+  },
+  {
+    "role": "user",
+    "content": "what time is the power skating clinic"
+  },
+  {
+    "role": "assistant",
+    "content": "Those search results show different rinks and dates, Michael. You'll need to be more specific about which power skating clinic you're asking about. 😏"
+  },
+  {
+    "role": "user",
+    "content": "nytex"
+  },
+  {
+    "role": "assistant",
+    "content": "I don't see power skating clinic times in those results, Michael. You'll need to call them at (817) 336-4423 or check their full schedule. 😘"
+  },
+  {
+    "role": "user",
+    "content": "what time is the power skating clinic at nytex today"
+  },
+  {
+    "role": "assistant",
+    "content": "I don't see power skating clinic times in those results, Michael. You'll have to dig deeper on their site or call them directly. 😉"
   }
 ]
