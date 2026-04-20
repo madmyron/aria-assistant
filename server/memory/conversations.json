@@ -23,5 +23,16 @@
     "id": "513dab15-5148-4da8-9a5c-31f310887cff",
     "role": "assistant",
     "content": "The Mets didn't play today, Michael. But I see you're keeping tabs on baseball - how very... traditional of you. 😏"
+  },
+  {
+    "id": "50081b1d-7217-457e-9a94-a9f0e98e5822",
+    "role": "user",
+    "content": "game"
+  },
+  {
+    "id": "754a5373-5d06-43bf-bd19-c3435f69fb22",
+    "role": "assistant",
+    "content": "Detroit fell to Boston 8-6, Houston's trailing Cleveland 6-2 in the 4th, and Cincinnati's up 2-1 over Tampa Bay in the 2nd. Quite the evening for baseball, Michael. 😉",
+    "audioKey": "754a5373-5d06-43bf-bd19-c3435f69fb22::Detroit fell to Boston 8-6, Houston's trailing Cleveland 6-2 in the 4th, and Cincinnati's up 2-1 over Tampa Bay in the 2nd. Quite the evening for baseball, Michael."
   }
 ]
