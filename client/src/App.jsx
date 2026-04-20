@@ -348,7 +348,7 @@ export default function App() {
   const recognitionRef = useRef(null);
   const activeAudioRef = useRef(null);
   const ttsCacheRef = useRef(new Map());
-  const lastVoiceMessageIdRef = useRef(null);
+  const spokenMessageIdsRef = useRef(new Set());
   const voiceHydratedRef = useRef(false);
   const bottomRef = useRef(null);
   const memoryInitialized = useRef(false);
@@ -371,7 +371,11 @@ export default function App() {
       .then(data => {
         if (Array.isArray(data.messages) && data.messages.length) {
           const normalized = normalizeMessages(data.messages);
-          lastVoiceMessageIdRef.current = normalized[normalized.length - 1]?.id || null;
+          normalized.forEach((message) => {
+            if (message.role === "assistant" && message.id) {
+              spokenMessageIdsRef.current.add(message.id);
+            }
+          });
           setMessages(normalized);
           saveMessagesToStorage(normalized);
         }
@@ -494,6 +498,8 @@ export default function App() {
   function sanitizeSpeechText(text) {
     return String(text || "")
       .replace(/https?:\/\/[^\s]+/g, "")
+      .replace(/\*[^*]+\*/g, " ")
+      .replace(/:[a-z0-9_+\-]+:/gi, " ")
       .replace(/\s+/g, " ")
       .trim();
   }
@@ -544,20 +550,21 @@ export default function App() {
     if (!message?.content) return;
     const { force = false } = options;
     const messageId = message.id || message.content;
+    const audioKey = `${messageId}::${sanitizeSpeechText(message.content)}`;
 
     if (!force && (!voiceEnabled || !audioSupported)) {
       return;
     }
 
-    if (ttsCacheRef.current.has(messageId)) {
-      playAudioContent(ttsCacheRef.current.get(messageId));
+    if (ttsCacheRef.current.has(audioKey)) {
+      playAudioContent(ttsCacheRef.current.get(audioKey));
       return;
     }
 
     const audioContent = await fetchTtsAudio(message.content);
     if (!audioContent) return;
 
-    ttsCacheRef.current.set(messageId, audioContent);
+    ttsCacheRef.current.set(audioKey, audioContent);
     playAudioContent(audioContent);
   }
 
@@ -645,7 +652,7 @@ export default function App() {
     const initialMessage = createMessage("assistant", "Michael. 😏 Fresh start. What do you need?");
     setMessages([initialMessage]);
     saveMessagesToStorage([initialMessage]);
-    lastVoiceMessageIdRef.current = initialMessage.id;
+    spokenMessageIdsRef.current = new Set([initialMessage.id]);
     fetch(`${API_BASE}/api/memory`, { method: 'DELETE' }).catch(() => {});
     setSettingsOpen(false);
   }
@@ -843,7 +850,6 @@ export default function App() {
 
     if (!voiceHydratedRef.current) {
       voiceHydratedRef.current = true;
-      lastVoiceMessageIdRef.current = last.role === "assistant" ? last.id : null;
       return;
     }
 
@@ -853,16 +859,16 @@ export default function App() {
       return;
     }
 
-    if (lastVoiceMessageIdRef.current === last.id) {
+    if (spokenMessageIdsRef.current.has(last.id)) {
       return;
     }
 
     if (!voiceEnabled || !audioSupported) {
-      lastVoiceMessageIdRef.current = last.id;
+      spokenMessageIdsRef.current.add(last.id);
       return;
     }
 
-    lastVoiceMessageIdRef.current = last.id;
+    spokenMessageIdsRef.current.add(last.id);
     speakAssistantMessage(last).catch(() => {});
   }, [messages, loading, voiceEnabled, audioSupported]);
 
