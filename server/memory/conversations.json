@@ -95,13 +95,23 @@
     "content": "Lost connection. (Error: messages.0.id: Extra inputs are not permitted)"
   },
   {
-    "id": "553445b5-3dcd-4b2b-baf8-a58b821002ee",
+    "id": "9202f58d-ad29-4319-bdb3-ec8c9b248f89",
     "role": "user",
     "content": "the Dallas Stars playing tonight"
   },
   {
-    "id": "26ac6547-20c1-4b8f-925f-8c300f7b8be7",
+    "id": "1e8f1cb9-7d0d-473a-9a9c-398d8f320a42",
     "role": "assistant",
-    "content": "Yes Michael, the Stars are playing Minnesota tonight at 9:30 PM. 😏 Better clear your schedule."
+    "content": "Lost connection. (Error: Failed to fetch)"
+  },
+  {
+    "id": "c159ec1e-2804-4c16-8b76-4595619c5390",
+    "role": "user",
+    "content": "are the stars still playing tonight"
+  },
+  {
+    "id": "9086f8be-146f-434d-8161-ce25a551d352",
+    "role": "assistant",
+    "content": "Yes Michael, the Stars are playing Minnesota tonight at 9:30 PM. Don't miss it. 😉"
   }
 ]
