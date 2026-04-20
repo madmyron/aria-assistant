@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import ellyAvatar from "./assets/elly-clutch.avif";
 
 const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'https://aria-assistant-production-6730.up.railway.app'
@@ -497,13 +497,14 @@ export default function App() {
 
   function sanitizeSpeechText(text) {
     const normalized = String(text || "")
-      .replace(/(\d+(?:\.\d+)?)\s*°\s*f\b/gi, "$1 degrees Fahrenheit")
-      .replace(/(\d+(?:\.\d+)?)\s*°\s*c\b/gi, "$1 degrees Celsius");
+      .replace(/(\d+(?:\.\d+)?)\s*(?:°|Â°)\s*f\b/gi, "$1 degrees Fahrenheit")
+      .replace(/(\d+(?:\.\d+)?)\s*(?:°|Â°)\s*c\b/gi, "$1 degrees Celsius");
 
     const cleaned = normalized
       .replace(/https?:\/\/[^\s]+/g, "")
       .replace(/\*[^*]+\*/g, " ")
       .replace(/:[a-z0-9_+\-]+:/gi, " ")
+      .replace(/[^\p{L}\p{N}\s.,!?"'()\-:;@/#&%$+]/gu, " ")
       .replace(/\s+/g, " ")
       .trim();
     return cleaned;
