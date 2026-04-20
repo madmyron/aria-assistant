@@ -76,6 +76,8 @@ Make sure to set these in your deployment platform:
 - `ELEVENLABS_API_KEY`
 - `ELEVENLABS_VOICE_ID`
 
+These values should be provided as runtime environment variables only. Do not reference them in Docker build steps or other build-time secret mounts.
+
 ## Mobile Access
 
 Once deployed, you can access Aria from anywhere:
