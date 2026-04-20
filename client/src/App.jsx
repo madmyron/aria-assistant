@@ -489,54 +489,85 @@ export default function App() {
   }
 
   function sanitizeSpeechText(text) {
-    return String(text || "")
+    const cleaned = String(text || "")
       .replace(/https?:\/\/[^\s]+/g, "")
       .replace(/\*[^*]+\*/g, " ")
       .replace(/:[a-z0-9_+\-]+:/gi, " ")
       .replace(/\s+/g, " ")
       .trim();
+    return cleaned;
   }
 
   async function fetchTtsAudio(text) {
     const content = sanitizeSpeechText(text);
-    if (!content) return null;
+    console.log("[TTS] fetchTtsAudio start", { originalLength: String(text || "").length, cleanedText: content, cleanedLength: content.length });
+    if (!content) {
+      console.log("[TTS] fetchTtsAudio aborted: cleaned text is empty");
+      return null;
+    }
 
     try {
+      console.log("[TTS] POST /api/tts");
       const result = await fetchJson("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: content })
       });
+      console.log("[TTS] /api/tts response received", {
+        hasAudioContent: Boolean(result?.audioContent),
+        audioLength: result?.audioContent?.length || 0
+      });
       return result?.audioContent || null;
     } catch (error) {
-      console.warn("TTS request failed:", error);
+      console.warn("[TTS] request failed:", error);
       return null;
     }
   }
 
   function playAudioContent(audioContent) {
-    if (!audioContent || !audioSupported) return;
+    console.log("[TTS] playAudioContent start", {
+      hasAudioContent: Boolean(audioContent),
+      audioLength: audioContent?.length || 0,
+      audioSupported
+    });
+
+    if (!audioContent || !audioSupported) {
+      console.log("[TTS] playAudioContent aborted", {
+        reason: !audioContent ? "missing audio" : "audio unsupported"
+      });
+      return;
+    }
 
     if (activeAudioRef.current) {
+      console.log("[TTS] stopping previous audio");
       activeAudioRef.current.pause();
       activeAudioRef.current.currentTime = 0;
     }
 
-    const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
+    const audioUrl = "data:audio/mp3;base64," + audioContent;
+    console.log("[TTS] creating Audio object");
+    const audio = new Audio(audioUrl);
     activeAudioRef.current = audio;
     audio.onended = () => {
+      console.log("[TTS] audio ended");
       if (activeAudioRef.current === audio) {
         activeAudioRef.current = null;
       }
     };
     audio.onerror = () => {
+      console.warn("[TTS] audio error");
       if (activeAudioRef.current === audio) {
         activeAudioRef.current = null;
       }
     };
-    audio.play().catch((error) => {
-      console.warn("Audio playback failed:", error);
-    });
+    console.log("[TTS] calling audio.play()");
+    audio.play()
+      .then(() => {
+        console.log("[TTS] audio.play() resolved");
+      })
+      .catch((error) => {
+        console.warn("[TTS] audio.play() failed:", error);
+      });
   }
 
   async function speakAssistantMessage(message, options = {}) {
@@ -544,20 +575,28 @@ export default function App() {
     const { force = false } = options;
     const messageId = message.id || message.content;
     const audioKey = `${messageId}::${sanitizeSpeechText(message.content)}`;
+    console.log("[TTS] speakAssistantMessage", { messageId, force, audioKey });
 
     if (!force && (!voiceEnabled || !audioSupported)) {
+      console.log("[TTS] speakAssistantMessage skipped: voice disabled or audio unsupported");
       return;
     }
 
     if (ttsCacheRef.current.has(audioKey)) {
+      console.log("[TTS] cache hit");
       playAudioContent(ttsCacheRef.current.get(audioKey));
       return;
     }
 
+    console.log("[TTS] cache miss, fetching audio");
     const audioContent = await fetchTtsAudio(message.content);
-    if (!audioContent) return;
+    if (!audioContent) {
+      console.log("[TTS] no audio returned from /api/tts");
+      return;
+    }
 
     ttsCacheRef.current.set(audioKey, audioContent);
+    console.log("[TTS] audio cached, playing");
     playAudioContent(audioContent);
   }
 
@@ -658,11 +697,18 @@ export default function App() {
       return;
     }
 
+    let assistantReplySent = false;
     const userText = text;
     const userMsg = createMessage("user", userText);
     const updated = [...messages, userMsg];
     const intents = detectIntent(userText);
     const appendAssistantReply = async (replyText) => {
+      if (assistantReplySent) {
+        console.warn("[sendMessage] appendAssistantReply skipped: reply already sent", { replyText });
+        return;
+      }
+      assistantReplySent = true;
+      console.log("[sendMessage] appendAssistantReply", { replyText });
       const assistantMessage = createMessage("assistant", replyText);
       setMessages([...updated, assistantMessage]);
       await speakAssistantMessage(assistantMessage);
@@ -676,10 +722,12 @@ export default function App() {
       if (intents.sms) {
         const smsBody = extractSmsMessage(userText);
         if (!smsBody) {
+          console.log("[sendMessage] sms branch: missing sms body");
           await appendAssistantReply(`Michael, give me the exact text you want ${assistantName} to send.`);
           setLoading(false);
           return;
         }
+        console.log("[sendMessage] sms branch: sending SMS");
         await fetchJson("/api/sms", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -693,11 +741,13 @@ export default function App() {
       if (intents.calendarCreate) {
         const event = parseCalendarEventRequest(userText);
         if (!event.date) {
+          console.log("[sendMessage] calendar branch: missing date");
           await appendAssistantReply(`Michael, I need a date to schedule that event. Try: "Schedule a call with Jake tomorrow at 2pm."`);
           setLoading(false);
           return;
         }
 
+        console.log("[sendMessage] calendar branch: creating event");
         const calendar = await fetchJson("/api/calendar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -718,16 +768,19 @@ export default function App() {
       if (intents.reminder) {
         const parsed = parseReminderRequest(userText);
         if (!parsed.hasTime) {
+          console.log("[sendMessage] reminder branch: missing time");
           await appendAssistantReply(`Michael, I need a time for that. Try: "Remind me at 3pm to pick up the kids."`);
           setLoading(false);
           return;
         }
         if (!parsed.datetime) {
+          console.log("[sendMessage] reminder branch: invalid date");
           await appendAssistantReply(`Something's off with that date, Michael. Try again with a clearer time.`);
           setLoading(false);
           return;
         }
         try {
+          console.log("[sendMessage] reminder branch: creating reminder");
           const result = await fetchJson('/api/reminders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -755,6 +808,7 @@ export default function App() {
         const req = parseListRequest(userText);
         let contextMsg = '';
         try {
+          console.log("[sendMessage] list branch", { action: req.action, listName: req.listName });
           if (req.action === 'add' && req.item) {
             const result = await fetchJson('/api/lists', {
               method: 'POST',
@@ -821,6 +875,7 @@ export default function App() {
       const enrichedUserText = context ? `${userText}\n\n${context}` : userText;
       const messagesForApi = [...messages, createMessage("user", enrichedUserText)];
 
+      console.log("[sendMessage] default chat branch");
       const chat = await fetchJson("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
