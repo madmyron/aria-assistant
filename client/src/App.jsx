@@ -4,6 +4,7 @@ import ellyAvatar from "./assets/elly-clutch.avif";
 const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'https://aria-assistant-production-6730.up.railway.app'
 const AVATAR = ellyAvatar;
 const DEFAULT_NAME = "Aria";
+let activeTtsKey = null;
 const INITIAL_ASSISTANT_GREETING = "Michael. 😏 You kept me waiting. What do you need?";
 
 function createMessage(role, content) {
@@ -563,6 +564,7 @@ export default function App() {
     currentAudioRef.current = audio;
     audio.onended = () => {
       console.log("[TTS] audio ended");
+      activeTtsKey = null;
       if (currentAudioRef.current === audio) {
         currentAudioRef.current = null;
       }
@@ -580,6 +582,7 @@ export default function App() {
     };
     audio.onerror = () => {
       console.warn("[TTS] audio error");
+      activeTtsKey = null;
       if (currentAudioRef.current === audio) {
         currentAudioRef.current = null;
       }
@@ -592,6 +595,7 @@ export default function App() {
       })
       .catch((error) => {
         console.warn("[TTS] audio.play() failed:", error);
+        activeTtsKey = null;
         if (shouldResumeListeningRef.current && recognitionRef.current && !listening) {
           console.log("[TTS] restarting voice recognition after audio.play() failure");
           shouldResumeListeningRef.current = false;
@@ -610,8 +614,16 @@ export default function App() {
     if (!message?.content) return;
     const { force = false } = options;
     const messageId = message.id || message.content;
-    const audioKey = `${messageId}::${sanitizeSpeechText(message.content)}`;
-    console.log("[TTS] speakAssistantMessage", { messageId, force, audioKey, voiceEnabled });
+    const audioKey = message.audioKey || `${messageId}::${sanitizeSpeechText(message.content)}`;
+    message.audioKey = audioKey;
+    console.log("[TTS] speakAssistantMessage", { messageId, force, audioKey, voiceEnabled, activeTtsKey });
+
+    if (audioKey === activeTtsKey) {
+      console.log("[TTS] speakAssistantMessage skipped: activeTtsKey match");
+      return;
+    }
+
+    activeTtsKey = audioKey;
 
     if (!force) {
       if (!voiceEnabled) {
@@ -619,6 +631,7 @@ export default function App() {
           voiceEnabled,
           reason: "voice disabled"
         });
+        activeTtsKey = null;
         return;
       }
     }
@@ -642,6 +655,7 @@ export default function App() {
     const audioContent = await fetchTtsAudio(message.content);
     if (!audioContent) {
       console.log("[TTS] no audio returned from /api/tts");
+      activeTtsKey = null;
       shouldResumeListeningRef.current = false;
       return;
     }
