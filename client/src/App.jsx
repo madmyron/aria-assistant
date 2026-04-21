@@ -349,6 +349,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [voiceOn, setVoiceOn] = useState(true);
   const recognitionRef = useRef(null);
   const bottomRef = useRef(null);
@@ -507,6 +508,16 @@ export default function App() {
   const deviceAccessHint = useMemo(() => {
     return import.meta.env.DEV ? getDeviceAccessHint() : '';
   }, []);
+
+  async function unlockAudio() {
+    try {
+      const audio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAAABAAgABAAACAAAA");
+      await audio.play();
+      setAudioUnlocked(true);
+    } catch (err) {
+      console.error("Failed to unlock audio", err);
+    }
+  }
 
   async function fetchJson(path, options) {
     console.log(`Fetching: ${API_BASE}${path}`);
@@ -960,7 +971,39 @@ export default function App() {
   }
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100vh", maxWidth:"480px", margin:"0 auto", fontFamily:"sans-serif", background:"#f4f4f8", color:"#1a1a1a", colorScheme:"only light" }}>
+    <>
+      {!audioUnlocked && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(244, 244, 248, 0.9)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, backdropFilter: 'blur(4px'
+        }}>
+          <div style={{
+            background: 'white', padding: '32px', borderRadius: '24px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.1)', textAlign: 'center',
+            maxWidth: '300px', width: '80%', border: '1px solid #eee'
+          }}>
+            <div style={{ fontSize: '40px', marginBottom: '16px' }}>😌</div>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#1a1a1a' }}>Welcome, Michael</h2>
+            <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#666', lineHeight: '1.5' }}>
+              Tap below to enable Aria's voice and start your session.
+            </p>
+            <button 
+              onClick={unlockAudio}
+              style={{
+                background: 'linear-gradient(135deg, #7F77DD 0%, #5DCAA5 100%)',
+                color: 'white', border: 'none', padding: '12px 24px',
+                borderRadius: '12px', fontSize: '16px', fontWeight: '600',
+                cursor: 'pointer', width: '100%', boxShadow: '0 4px 12px rgba(127, 119, 221, 0.3)'
+              }}
+            >
+              Tap to Begin
+            </button>
+          </div>
+        </div>
+      )}
+      <div style={{ display:"flex", flexDirection:"column", height:"100vh", maxWidth:"480px", margin:"0 auto", fontFamily:"sans-serif", background:"#f4f4f8", color:"#1a1a1a", colorScheme:"only light" }}>
       <div style={{ background:"linear-gradient(135deg, #7F77DD 0%, #5DCAA5 100%)", display:"flex", flexDirection:"column" }}>
         <div style={{ display:"flex", alignItems:"stretch", height:"88px", overflow:"hidden" }}>
           <div style={{ position:"relative", width:"88px", flexShrink:0 }}>
@@ -1149,5 +1192,6 @@ export default function App() {
         </div>
       </div>
     </div>
+      </>
   );
 }
