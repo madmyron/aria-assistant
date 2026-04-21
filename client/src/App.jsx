@@ -515,16 +515,11 @@ export default function App() {
   }
 
   function sanitizeSpeechText(text) {
-    const normalized = String(text || "")
-      .replace(/(\d+(?:\.\d+)?)\s*(?:°|Â°)\s*f\b/gi, "$1 degrees Fahrenheit")
-      .replace(/(\d+(?:\.\d+)?)\s*(?:°|Â°)\s*c\b/gi, "$1 degrees Celsius");
-
-    const cleaned = normalized
+    const cleaned = String(text || "")
       .replace(/https?:\/\/[^\s]+/g, "")
       .replace(/\*[^*]+\*/g, " ")
       .replace(/:[a-z0-9_+\-]+:/gi, " ")
-      .replace(/[\p{Extended_Pictographic}\u200d\uFE0F]+/gu, " ")
-      .replace(/[^\p{L}\p{N}\s.,!?"'()\-:;@/#&%$+]/gu, " ")
+      .replace(/[#__~`*]/g, " ")
       .replace(/\s+/g, " ")
       .trim();
     return cleaned;
