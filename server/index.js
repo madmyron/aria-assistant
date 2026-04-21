@@ -185,24 +185,18 @@ function sanitizeClaudeMessages(messages = []) {
 }
 
 function sanitizeTextForTts(text = '') {
-  let s = String(text);
-  // number + degree symbol (U+00B0) + optional F or C
-  s = s.replace(/(\d+(?:\.\d+)?)\s*\u00B0\s*([FC])\b/gi, '$1 degrees');
-  s = s.replace(/(\d+(?:\.\d+)?)\s*\u00B0/g, '$1 degrees');
-  // number + any non-ASCII chars + optional F or C (catches garbled encodings)
-  s = s.replace(/(\d+(?:\.\d+)?)[^\x00-\x7F]+\s*(?:[FC]\b)?/gi, '$1 degrees');
-  // speed units
-  s = s.replace(/(\d+(?:\.\d+)?)\s*mph\b/gi, '$1 miles per hour');
-  s = s.replace(/(\d+(?:\.\d+)?)\s*(?:km\/h|kmh)\b/gi, '$1 kilometers per hour');
-  // emoji shortcodes like :smile:
-  s = s.replace(/:[a-z0-9_+\-]+:/gi, ' ');
-  // emoji and pictograph characters
-  s = s.replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F\u200D]/gu, '');
-  // strip all remaining non-ASCII
-  s = s.replace(/[^\x00-\x7F]/g, '');
-  // remove any leftover non-word punctuation
-  s = s.replace(/[^\w\s.,!?"'()\-:;@/#&%$+]/g, ' ');
-  return s.replace(/\s+/g, ' ').trim();
+  return String(text)
+    .replace(/(\d+(?:\.\d+)?)[^\x00-\x7F]+\s*(?:[FC]\b)?/gi, '$1 degrees')
+    .replace(/(\d+(?:\.\d+)?)\s*(?:\u00B0|Â°|ï¿½)\s*F\b/gi, '$1 degrees')
+    .replace(/(\d+(?:\.\d+)?)\s*(?:\u00B0|Â°|ï¿½)\s*C\b/gi, '$1 degrees')
+    .replace(/(\d+(?:\.\d+)?)\s*(?:mph)\b/gi, '$1 miles per hour')
+    .replace(/(\d+(?:\.\d+)?)\s*(?:km\/h|kmh)\b/gi, '$1 kilometers per hour')
+    .replace(/:[a-z0-9_+\-]+:/gi, ' ')
+    .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\uFE0F\u200D]/gu, '')
+    .replace(/[^\p{L}\p{N}\s.,!?"'()\-:;@/#&%$+]/gu, ' ')
+    .replace(/[^\x00-\x7F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 app.get('/api/lists', (_req, res) => {
   res.json(readLists());
@@ -493,6 +487,12 @@ app.post('/api/calendar', async (req, res) => {
     }
 
     const end = new Date(start.getTime() + duration * 60000);
+    const calendar = google.calendar({ version: 'v3', auth });
+    const response = await calendar.events.insert({
+      calendarId: 'primary',
+      requestBody: {
+        summary: title,
+        start: { dateTime: start.toISOString(), timeZone: 'America/Chicago' },
     const calendar = google.calendar({ version: 'v3', auth });
     const response = await calendar.events.insert({
       calendarId: 'primary',
