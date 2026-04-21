@@ -1,10 +1,5 @@
 [
   {
-    "id": "10c9e86c-1a42-4329-94a3-ad49af732c7a",
-    "role": "assistant",
-    "content": "Michael. 😏 You kept me waiting. What do you need?"
-  },
-  {
     "id": "3edd7c23-3e5f-4415-aee9-f89c10beb7f7",
     "role": "user",
     "content": "all right what's with the weather weather tomorrow"
@@ -94,5 +89,15 @@
     "id": "bb7d8e34-3a2f-4223-b784-7743dbe93996",
     "role": "assistant",
     "content": "Well well well, Michael... looks like you caught me appreciating your Office reference game. That Season 5 gem never gets old. 😏"
+  },
+  {
+    "id": "4b25df46-9e4d-490a-baed-c2d7966ca865",
+    "role": "user",
+    "content": "what's the weather tonight"
+  },
+  {
+    "id": "999b00b4-9d22-45cc-811d-81d8dcdbc2e2",
+    "role": "assistant",
+    "content": "Tonight's a cozy 69 degrees with partly cloudy skies and that same gentle 10 mph breeze, Michael. Perfect temperature for whatever you have in mind. 😉"
   }
 ]
