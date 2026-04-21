@@ -417,9 +417,18 @@ export default function App() {
           console.log('Voice recognition final result:', transcript);
           if (transcript) {
             const text = transcript.trim();
-            console.log('Processing voice input:', text);
-            // Always send the message directly - no wake phrase required
-            sendMessage(text);
+            const wakeMatch = text.match(/^(?:hey\s+)?aria\b[\s,.:!?\-]*([\s\S]*)$/i);
+            if (!wakeMatch) {
+              console.log('Voice recognition ignored: missing wake word');
+              continue;
+            }
+            const commandText = wakeMatch[1].trim();
+            if (!commandText) {
+              console.log('Voice recognition ignored: wake word only');
+              continue;
+            }
+            console.log('Processing voice input:', commandText);
+            sendMessage(commandText);
             handledFinalResult = true;
           }
         }
