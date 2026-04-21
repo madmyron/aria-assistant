@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fetch from 'node-fetch';
@@ -186,17 +186,16 @@ function sanitizeClaudeMessages(messages = []) {
 
 function sanitizeTextForTts(text = '') {
   return String(text)
-    .replace(/(\d+(?:\.\d+)?)\s*(?:°\s*F|°F)\b/gi, '$1 degrees')
-    .replace(/(\d+(?:\.\d+)?)\s*(?:°\s*C|°C)\b/gi, '$1 degrees')
+    .replace(/(\d+(?:\.\d+)?)\s*(?:\u00B0\s*F|\u00B0F)\b/gi, '$1 degrees')
+    .replace(/(\d+(?:\.\d+)?)\s*(?:\u00B0\s*C|\u00B0C)\b/gi, '$1 degrees')
     .replace(/(\d+(?:\.\d+)?)\s*(?:mph)\b/gi, '$1 miles per hour')
     .replace(/(\d+(?:\.\d+)?)\s*(?:km\/h|kmh)\b/gi, '$1 kilometers per hour')
     .replace(/:[a-z0-9_+\-]+:/gi, ' ')
     .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\uFE0F\u200D]/gu, '')
-    .replace(/[^\p{L}\p{N}\s.,!?'"()\-:;@/#&%$+]/gu, ' ')
+    .replace(/[^\p{L}\p{N}\s.,!?"'()\-:;@/#&%$+]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
-
 app.get('/api/lists', (_req, res) => {
   res.json(readLists());
 });
@@ -682,3 +681,4 @@ app.listen(PORT, () => {
 }).on('error', (err) => {
   console.error('Server listen error:', err);
 });
+
