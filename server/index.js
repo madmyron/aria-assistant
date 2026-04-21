@@ -185,18 +185,17 @@ function sanitizeClaudeMessages(messages = []) {
 }
 
 function sanitizeTextForTts(text = '') {
-  return String(text)
-    .replace(/(\d+(?:\.\d+)?)[^\x00-\x7F]+\s*(?:[FC]\b)?/gi, '$1 degrees')
-    .replace(/(\d+(?:\.\d+)?)\s*(?:\u00B0|Â°|ï¿½)\s*F\b/gi, '$1 degrees')
-    .replace(/(\d+(?:\.\d+)?)\s*(?:\u00B0|Â°|ï¿½)\s*C\b/gi, '$1 degrees')
-    .replace(/(\d+(?:\.\d+)?)\s*(?:mph)\b/gi, '$1 miles per hour')
-    .replace(/(\d+(?:\.\d+)?)\s*(?:km\/h|kmh)\b/gi, '$1 kilometers per hour')
-    .replace(/:[a-z0-9_+\-]+:/gi, ' ')
-    .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\uFE0F\u200D]/gu, '')
-    .replace(/[^\p{L}\p{N}\s.,!?"'()\-:;@/#&%$+]/gu, ' ')
-    .replace(/[^\x00-\x7F]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  let s = String(text);
+  s = s.replace(/(\d+(?:\.\d+)?)\s*\u00B0\s*([FC])\b/gi, '$1 degrees');
+  s = s.replace(/(\d+(?:\.\d+)?)\s*\u00B0/g, '$1 degrees');
+  s = s.replace(/(\d+(?:\.\d+)?)[^\x00-\x7F]+\s*(?:[FC]\b)?/gi, '$1 degrees');
+  s = s.replace(/(\d+(?:\.\d+)?)\s*mph\b/gi, '$1 miles per hour');
+  s = s.replace(/(\d+(?:\.\d+)?)\s*(?:km\/h|kmh)\b/gi, '$1 kilometers per hour');
+  s = s.replace(/:[a-z0-9_+\-]+:/gi, ' ');
+  s = s.replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F\u200D]/gu, '');
+  s = s.replace(/[^\x00-\x7F]/g, '');
+  s = s.replace(/[^\w\s.,!?"'()\-:;@\/#&%$+]/g, ' ');
+  return s.replace(/\s+/g, ' ').trim();
 }
 app.get('/api/lists', (_req, res) => {
   res.json(readLists());
@@ -314,8 +313,6 @@ app.post('/api/tts', async (req, res) => {
 
     const text = String(req.body?.text || '').trim();
     const cleanText = sanitizeTextForTts(text);
-    console.log('[TTS] raw:', JSON.stringify(text));
-    console.log('[TTS] clean:', JSON.stringify(cleanText));
     if (!cleanText) {
       return res.status(400).json({ error: 'text is required' });
     }
