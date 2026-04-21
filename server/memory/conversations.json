@@ -83,5 +83,15 @@
     "id": "d552f750-d1cc-46b4-b357-8ee8fffe4a81",
     "role": "assistant",
     "content": "The Stars beat Minnesota 2-1, Michael - they're up with 18:04 left in the third. 😘 Looks like Dallas knows how to finish strong."
+  },
+  {
+    "id": "951a01de-1f9b-4ca5-9107-0a1f7795e0d6",
+    "role": "user",
+    "content": "whats the weather tommorow"
+  },
+  {
+    "id": "1fe8a6b9-435c-4349-bed3-bfdb6b11b638",
+    "role": "assistant",
+    "content": "Tomorrow's serving up 58°F with overcast skies and a light 5 mph wind in Roanoke, Michael. 😏 Getting cooler - hope you're planning accordingly."
   }
 ]

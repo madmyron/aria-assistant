@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check index.js)",
+      "Bash(netstat -ano)",
+      "PowerShell(Stop-Process -Id 48764 -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(netstat -ano)",
+      "Bash(node rewrite_fn.js)"
+    ]
+  }
+}
