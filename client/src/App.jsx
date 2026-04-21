@@ -417,7 +417,7 @@ export default function App() {
           console.log('Voice recognition final result:', transcript);
           if (transcript) {
             const text = transcript.trim();
-            const wakeMatch = text.match(/^aria\b[\s,.:!?\-]*([\s\S]*)$/i);
+            const wakeMatch = text.match(/^(?:aria|area)\b[\s,.:!?\-]*([\s\S]*)$/i);
             if (!wakeMatch) {
               console.log('Voice recognition ignored: missing wake word');
               continue;
