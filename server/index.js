@@ -314,6 +314,8 @@ app.post('/api/tts', async (req, res) => {
 
     const text = String(req.body?.text || '').trim();
     const cleanText = sanitizeTextForTts(text);
+    console.log('[TTS] raw:', JSON.stringify(text));
+    console.log('[TTS] clean:', JSON.stringify(cleanText));
     if (!cleanText) {
       return res.status(400).json({ error: 'text is required' });
     }
@@ -487,12 +489,6 @@ app.post('/api/calendar', async (req, res) => {
     }
 
     const end = new Date(start.getTime() + duration * 60000);
-    const calendar = google.calendar({ version: 'v3', auth });
-    const response = await calendar.events.insert({
-      calendarId: 'primary',
-      requestBody: {
-        summary: title,
-        start: { dateTime: start.toISOString(), timeZone: 'America/Chicago' },
     const calendar = google.calendar({ version: 'v3', auth });
     const response = await calendar.events.insert({
       calendarId: 'primary',
@@ -689,4 +685,3 @@ app.listen(PORT, () => {
 }).on('error', (err) => {
   console.error('Server listen error:', err);
 });
-
