@@ -510,6 +510,12 @@ export default function App() {
   }, []);
 
   function unlockAudio() {
+    try {
+      const silentAudio = new Audio("data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABMYLZnNTguNzYuMTAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==");
+      silentAudio.play().catch(e => console.warn("Silent audio play failed:", e));
+    } catch (err) {
+      console.error("Audio unlock failed:", err);
+    }
     setAudioUnlocked(true);
   }
 
@@ -555,6 +561,10 @@ export default function App() {
   }
 
   async function speak(text) {
+    if (!audioUnlocked && window.location.hostname !== 'localhost') {
+      console.warn("[TTS] Audio not unlocked on mobile, skipping playback");
+      return;
+    }
     console.trace('[TTS] speak called');
     const cleanedText = sanitizeSpeechText(text);
     console.log("[TTS] speak", { voiceOn, cleanedText });
