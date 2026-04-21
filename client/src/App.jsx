@@ -6,6 +6,7 @@ const AVATAR = ellyAvatar;
 const DEFAULT_NAME = "Aria";
 let ttsAudio = null;
 let ttsPlaying = false;
+let audioCtx = null;
 let sendMessageInProgress = false;
 let ariaIsSpeaking = false;
 let recognitionRestartTimer = null;
@@ -511,7 +512,7 @@ export default function App() {
 
   function unlockAudio() {
     try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const buffer = audioCtx.createBuffer(1, 1, 22050);
       const source = audioCtx.createBufferSource();
       source.buffer = buffer;
@@ -616,47 +617,68 @@ export default function App() {
         return;
       }
 
-      const audio = new Audio("data:audio/mp3;base64," + base64data);
-      ttsAudio = audio;
-      ariaIsSpeaking = true;
-      audio.onended = () => {
-        if (ttsAudio === audio) {
-          ttsAudio = null;
-        }
-        ttsPlaying = false;
-        ariaIsSpeaking = false;
-        if (shouldResumeRecognitionAfterSpeech && recognitionRef.current) {
-          if (recognitionRestartTimer) {
-            clearTimeout(recognitionRestartTimer);
-          }
-          recognitionRestartTimer = setTimeout(() => {
-            recognitionRestartTimer = null;
-            if (shouldResumeRecognitionAfterSpeech && recognitionRef.current && !listening) {
-              console.log("[TTS] restarting voice recognition after speech");
-              try {
-                recognitionRef.current.start();
-              } catch (error) {
-                console.warn("[TTS] failed to restart voice recognition after speech", error);
+      if (window.location.hostname === 'localhost') {
+        const audio = new Audio("data:audio/mp3;base64," + base64data);
+        ttsAudio = audio;
+        ariaIsSpeaking = true;
+        audio.onended = () => {
+          if (ttsAudio === audio) ttsAudio = null;
+          ttsPlaying = false;
+          ariaIsSpeaking = false;
+          if (shouldResumeRecognitionAfterSpeech && recognitionRef.current) {
+            if (recognitionRestartTimer) clearTimeout(recognitionRestartTimer);
+            recognitionRestartTimer = setTimeout(() => {
+              recognitionRestartTimer = null;
+              if (shouldResumeRecognitionAfterSpeech && recognitionRef.current && !listening) {
+                try { recognitionRef.current.start(); } catch (e) {}
               }
-            }
+              shouldResumeRecognitionAfterSpeech = false;
+            }, 1000);
+          } else {
             shouldResumeRecognitionAfterSpeech = false;
-          }, 1000);
-        } else {
+          }
+        };
+        audio.onerror = () => {
+          if (ttsAudio === audio) ttsAudio = null;
+          ttsPlaying = false;
+          ariaIsSpeaking = false;
           shouldResumeRecognitionAfterSpeech = false;
-        }
-      };
-      audio.onerror = () => {
-        if (ttsAudio === audio) {
-          ttsAudio = null;
-        }
-        ttsPlaying = false;
-        ariaIsSpeaking = false;
-        shouldResumeRecognitionAfterSpeech = false;
-      };
-
-      console.log("[TTS] calling audio.play()");
-      await audio.play();
-      console.log("[TTS] audio.play() resolved");
+        };
+        await audio.play();
+      } else {
+        // Mobile/Deployed: Use Web Audio API
+        const binaryString = atob(base64data);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i);
+        
+        const arrayBuffer = bytes.buffer;
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        
+        const source = audioCtx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioCtx.destination);
+        
+        ariaIsSpeaking = true;
+        source.onended = () => {
+          ttsPlaying = false;
+          ariaIsSpeaking = false;
+          if (shouldResumeRecognitionAfterSpeech && recognitionRef.current) {
+            if (recognitionRestartTimer) clearTimeout(recognitionRestartTimer);
+            recognitionRestartTimer = setTimeout(() => {
+              recognitionRestartTimer = null;
+              if (shouldResumeRecognitionAfterSpeech && recognitionRef.current && !listening) {
+                try { recognitionRef.current.start(); } catch (e) {}
+              }
+              shouldResumeRecognitionAfterSpeech = false;
+            }, 1000);
+          } else {
+            shouldResumeRecognitionAfterSpeech = false;
+          }
+        };
+        
+        source.start(0);
+      }
     } catch (error) {
       console.warn("[TTS] speak failed:", error);
       if (ttsAudio === pendingAudio) {
