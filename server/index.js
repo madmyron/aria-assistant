@@ -186,6 +186,7 @@ function sanitizeClaudeMessages(messages = []) {
 
 function sanitizeTextForTts(text = '') {
   return String(text)
+    .replace(/(\d+(?:\.\d+)?)[^\x00-\x7F]+\s*(?:[FC]\b)?/gi, '$1 degrees')
     .replace(/(\d+(?:\.\d+)?)\s*(?:\u00B0|Â°|ï¿½)\s*F\b/gi, '$1 degrees')
     .replace(/(\d+(?:\.\d+)?)\s*(?:\u00B0|Â°|ï¿½)\s*C\b/gi, '$1 degrees')
     .replace(/(\d+(?:\.\d+)?)\s*(?:mph)\b/gi, '$1 miles per hour')
@@ -193,6 +194,7 @@ function sanitizeTextForTts(text = '') {
     .replace(/:[a-z0-9_+\-]+:/gi, ' ')
     .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\uFE0F\u200D]/gu, '')
     .replace(/[^\p{L}\p{N}\s.,!?"'()\-:;@/#&%$+]/gu, ' ')
+    .replace(/[^\x00-\x7F]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
