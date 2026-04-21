@@ -976,6 +976,28 @@ export default function App() {
 
   return (
     <>
+      {window.location.hostname !== 'localhost' && (
+        <div style={{
+          position: 'fixed', bottom: '10px', right: '10px',
+          background: 'rgba(0,0,0,0.8)', color: 'white',
+          padding: '10px', borderRadius: '12px', fontSize: '12px',
+          zIndex: 10000, fontFamily: 'monospace', border: '1px solid #444'
+        }}>
+          <div style={{ marginBottom: '4px' }}>AudioUnlocked: {String(audioUnlocked)}</div>
+          <div style={{ marginBottom: '8px' }}>VoiceOn: {String(voiceOn)}</div>
+          <button 
+            onClick={() => {
+              const a = new Audio("data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABMYXZmNTguNzYuMTAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==");
+              a.play()
+                .then(() => alert("Played!"))
+                .catch(e => alert("Error: " + e.message));
+            }}
+            style={{ background: '#5DCAA5', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '11px' }}
+          >
+            Test Audio
+          </button>
+        </div>
+      )}
       {!audioUnlocked && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <button 
