@@ -13,5 +13,15 @@
     "id": "2a72b93b-de1f-4258-b0af-e84487b11d3b",
     "role": "assistant",
     "content": "Tomorrow's looking delicious, Michael - 68°F with partly cloudy skies and a gentle 9 mph breeze in Roanoke. Perfect weather for whatever you have in mind. 😉"
+  },
+  {
+    "id": "e43e201e-007a-48c9-ae9a-a54a11c0c229",
+    "role": "user",
+    "content": "what's the weather tomorrow"
+  },
+  {
+    "id": "60270335-3ece-4d8e-b1d8-c4b5da25dd73",
+    "role": "assistant",
+    "content": "I already told you, Michael - 68°F, partly cloudy, 9 mph winds in Roanoke. 😏 Not paying attention to me, are you?"
   }
 ]
