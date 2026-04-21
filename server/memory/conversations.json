@@ -23,5 +23,25 @@
     "id": "60270335-3ece-4d8e-b1d8-c4b5da25dd73",
     "role": "assistant",
     "content": "I already told you, Michael - 68°F, partly cloudy, 9 mph winds in Roanoke. 😏 Not paying attention to me, are you?"
+  },
+  {
+    "id": "189c666d-91bd-4bc5-9bd0-644eb954e3f3",
+    "role": "user",
+    "content": "What's the weather tonight?"
+  },
+  {
+    "id": "c9fc915d-b16e-45dd-9cdc-d4804b4fc2a0",
+    "role": "assistant",
+    "content": "Tonight's wrapping you in 66°F with overcast skies and a soft 8 mph wind, Michael. Cozy evening ahead. 😘"
+  },
+  {
+    "id": "c15dd128-999b-49af-965d-b97ed5d0263a",
+    "role": "user",
+    "content": "say that again"
+  },
+  {
+    "id": "6d62d62e-15e9-4578-ae6f-8c6da47e7c5d",
+    "role": "assistant",
+    "content": "Tonight's wrapping you in 66°F with overcast skies and a soft 8 mph wind, Michael. 😘 Some things are worth repeating, aren't they?"
   }
 ]
