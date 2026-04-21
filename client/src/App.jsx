@@ -580,7 +580,7 @@ export default function App() {
       console.log("[TTS] POST /api/tts", cleanedText);
       const result = await fetchJson("/api/tts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json; charset=utf-8" },
         body: JSON.stringify({ text: cleanedText })
       });
 

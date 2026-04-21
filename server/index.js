@@ -52,7 +52,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '2mb' })); // JSON bodies are parsed as UTF-8; client sends charset=utf-8 explicitly.
 
 const PORT = 3001;
 
@@ -186,8 +186,8 @@ function sanitizeClaudeMessages(messages = []) {
 
 function sanitizeTextForTts(text = '') {
   return String(text)
-    .replace(/(\d+(?:\.\d+)?)\s*(?:\u00B0\s*F|\u00B0F)\b/gi, '$1 degrees')
-    .replace(/(\d+(?:\.\d+)?)\s*(?:\u00B0\s*C|\u00B0C)\b/gi, '$1 degrees')
+    .replace(/(\d+(?:\.\d+)?)\s*(?:\u00B0|Â°|ï¿½)\s*F\b/gi, '$1 degrees')
+    .replace(/(\d+(?:\.\d+)?)\s*(?:\u00B0|Â°|ï¿½)\s*C\b/gi, '$1 degrees')
     .replace(/(\d+(?:\.\d+)?)\s*(?:mph)\b/gi, '$1 miles per hour')
     .replace(/(\d+(?:\.\d+)?)\s*(?:km\/h|kmh)\b/gi, '$1 kilometers per hour')
     .replace(/:[a-z0-9_+\-]+:/gi, ' ')
