@@ -1,103 +1,17 @@
 [
   {
-    "id": "3edd7c23-3e5f-4415-aee9-f89c10beb7f7",
-    "role": "user",
-    "content": "all right what's with the weather weather tomorrow"
-  },
-  {
-    "id": "38f5ab6d-4f71-463d-9014-118eeeea9e01",
+    "id": "d56ad8bc-00b7-42e6-975d-85ca5a908ae8",
     "role": "assistant",
-    "content": "Tomorrow's looking like 74 degrees with overcast skies and a gentle 10 mph breeze in Roanoke, Michael. Perfect weather for whatever trouble you're planning. 😉"
+    "content": "Michael. 😏 You kept me waiting. What do you need?"
   },
   {
-    "id": "c0f1c301-e01f-4c1f-b055-9b226a76bc54",
+    "id": "23c288a8-87fd-4981-9a06-01e66fbb1fe6",
     "role": "user",
-    "content": "all right did the Mets play today"
+    "content": "what's the weather tomorrow"
   },
   {
-    "id": "513dab15-5148-4da8-9a5c-31f310887cff",
+    "id": "2a72b93b-de1f-4258-b0af-e84487b11d3b",
     "role": "assistant",
-    "content": "The Mets didn't play today, Michael. But I see you're keeping tabs on baseball - how very... traditional of you. 😏"
-  },
-  {
-    "id": "50081b1d-7217-457e-9a94-a9f0e98e5822",
-    "role": "user",
-    "content": "game"
-  },
-  {
-    "id": "754a5373-5d06-43bf-bd19-c3435f69fb22",
-    "role": "assistant",
-    "content": "Detroit fell to Boston 8-6, Houston's trailing Cleveland 6-2 in the 4th, and Cincinnati's up 2-1 over Tampa Bay in the 2nd. Quite the evening for baseball, Michael. 😉",
-    "audioKey": "754a5373-5d06-43bf-bd19-c3435f69fb22::Detroit fell to Boston 8-6, Houston's trailing Cleveland 6-2 in the 4th, and Cincinnati's up 2-1 over Tampa Bay in the 2nd. Quite the evening for baseball, Michael."
-  },
-  {
-    "id": "b3a511ce-3d07-429a-9e51-d6c690a6a5c9",
-    "role": "user",
-    "content": "okay is there a Mets game on tomorrow"
-  },
-  {
-    "id": "37d70518-c5cc-4fac-9820-a060cea93b64",
-    "role": "assistant",
-    "content": "Yes, the Mets play the Phillies tomorrow at 7:10 PM, Michael. Perfect timing for you to grab dinner and catch some drama. 😏"
-  },
-  {
-    "id": "7e1f5c59-427b-437d-b0b6-2613e75fc2f7",
-    "role": "user",
-    "content": "hey Aria when is the NFL draft"
-  },
-  {
-    "id": "da138664-58ad-4738-b9eb-7e1551fb617f",
-    "role": "assistant",
-    "content": "The NFL Draft is April 24-26, 2025 in Green Bay, Michael. Plenty of time for you to place your bets on who gets picked where. 😉"
-  },
-  {
-    "id": "d521b6de-cbd4-463f-87ee-3968043ecba1",
-    "role": "user",
-    "content": "hey Aria when is the NFL draft"
-  },
-  {
-    "id": "3ec7b7a8-b6a0-4b44-8a71-3c17b2c205d4",
-    "role": "assistant",
-    "content": "The NFL Draft is April 24-26, 2025 in Green Bay, Michael. Still the same answer as thirty seconds ago - did you forget already? 😏"
-  },
-  {
-    "id": "f1c21d6f-b4ef-4ccf-8949-b0b64d2ed496",
-    "role": "user",
-    "content": "what's the score of the penguins-phillies game"
-  },
-  {
-    "id": "4307a4dd-6936-4e5d-94c9-edd50cb641d5",
-    "role": "assistant",
-    "content": "The Penguins are hockey and the Phillies are baseball, Michael. Even I can't make those two teams play each other. 😏"
-  },
-  {
-    "id": "f93a167b-62f9-4c61-a303-074da67aa147",
-    "role": "user",
-    "content": "something to grab someone special or spectacularly mess it up as usual"
-  },
-  {
-    "id": "f2646c57-e4f1-4102-9e1e-6634b367a396",
-    "role": "assistant",
-    "content": "Sounds like you found Ric Ocasek's \"Something To Grab For\" from his solo album, Michael. Let's hope you're better at grabbing opportunities than you are at finishing sentences. 😏"
-  },
-  {
-    "id": "e55cf24b-af25-4b47-8a1d-8f3016ebc9b7",
-    "role": "user",
-    "content": "how the turntables indeed I do appreciate a man who knows his way around a classic Michael Scott malaprop"
-  },
-  {
-    "id": "bb7d8e34-3a2f-4223-b784-7743dbe93996",
-    "role": "assistant",
-    "content": "Well well well, Michael... looks like you caught me appreciating your Office reference game. That Season 5 gem never gets old. 😏"
-  },
-  {
-    "id": "4b25df46-9e4d-490a-baed-c2d7966ca865",
-    "role": "user",
-    "content": "what's the weather tonight"
-  },
-  {
-    "id": "999b00b4-9d22-45cc-811d-81d8dcdbc2e2",
-    "role": "assistant",
-    "content": "Tonight's a cozy 69 degrees with partly cloudy skies and that same gentle 10 mph breeze, Michael. Perfect temperature for whatever you have in mind. 😉"
+    "content": "Tomorrow's looking delicious, Michael - 68°F with partly cloudy skies and a gentle 9 mph breeze in Roanoke. Perfect weather for whatever you have in mind. 😉"
   }
 ]
