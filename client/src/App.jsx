@@ -510,9 +510,14 @@ export default function App() {
   }, []);
 
   async function unlockAudio() {
+    console.log("Unlock audio button tapped");
     try {
-      const audio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAAABAAgABAAACAAAA");
-      await audio.play();
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) {
+        const audioCtx = new AudioContext();
+        await audioCtx.resume();
+      }
+      await speak(" ");
       setAudioUnlocked(true);
     } catch (err) {
       console.error("Failed to unlock audio", err);
