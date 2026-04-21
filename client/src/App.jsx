@@ -509,19 +509,32 @@ export default function App() {
     return import.meta.env.DEV ? getDeviceAccessHint() : '';
   }, []);
 
-  async function unlockAudio() {
+  function unlockAudio() {
     console.log("Unlock audio button tapped");
     try {
+      // Synchronously play a silent sound to unlock the audio context within the user gesture
+      const silentAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAAABAAgABAAACAAAA");
+      silentAudio.play().catch(e => console.warn("Silent play blocked:", e));
+
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (AudioContext) {
         const audioCtx = new AudioContext();
-        await audioCtx.resume();
+        audioCtx.resume().catch(e => console.warn("Ctx resume blocked:", e));
       }
-      await speak(" ");
-      setAudioUnlocked(true);
     } catch (err) {
-      console.error("Failed to unlock audio", err);
+      console.error("Synchronous audio unlock failed", err);
     }
+
+    // Async part: trigger a silent speak and hide the overlay
+    (async () => {
+      try {
+        await speak(" ");
+      } catch (e) {
+        console.warn("Silent speak failed:", e);
+      } finally {
+        setAudioUnlocked(true);
+      }
+    })();
   }
 
   async function fetchJson(path, options) {
@@ -979,10 +992,10 @@ export default function App() {
     <>
       {!audioUnlocked && (
         <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
           backgroundColor: 'rgba(244, 244, 248, 0.9)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 9999, backdropFilter: 'blur(4px'
+          zIndex: 9999, backdropFilter: 'blur(4px)'
         }}>
           <div style={{
             background: 'white', padding: '32px', borderRadius: '24px',
