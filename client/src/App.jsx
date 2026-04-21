@@ -511,10 +511,14 @@ export default function App() {
 
   function unlockAudio() {
     try {
-      const silentAudio = new Audio("data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABMYLZnNTguNzYuMTAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==");
-      silentAudio.play().catch(e => console.warn("Silent audio play failed:", e));
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const buffer = audioCtx.createBuffer(1, 1, 22050);
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioCtx.destination);
+      source.start(0);
     } catch (err) {
-      console.error("Audio unlock failed:", err);
+      console.error("Web Audio API unlock failed:", err);
     }
     setAudioUnlocked(true);
   }
@@ -987,10 +991,17 @@ export default function App() {
           <div style={{ marginBottom: '8px' }}>VoiceOn: {String(voiceOn)}</div>
           <button 
             onClick={() => {
-              const a = new Audio("data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABMYXZmNTguNzYuMTAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==");
-              a.play()
-                .then(() => alert("Played!"))
-                .catch(e => alert("Error: " + e.message));
+              try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const buffer = audioCtx.createBuffer(1, 1, 22050);
+                const source = audioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioCtx.destination);
+                source.start(0);
+                alert("Played (Web Audio API)!");
+              } catch (e) {
+                alert("Error: " + e.message);
+              }
             }}
             style={{ background: '#5DCAA5', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '11px' }}
           >
