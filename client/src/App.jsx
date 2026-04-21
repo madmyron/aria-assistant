@@ -417,7 +417,7 @@ export default function App() {
           console.log('Voice recognition final result:', transcript);
           if (transcript) {
             const text = transcript.trim();
-            const wakeMatch = text.match(/^(?:hey\s+)?aria\b[\s,.:!?\-]*([\s\S]*)$/i);
+            const wakeMatch = text.match(/^aria\b[\s,.:!?\-]*([\s\S]*)$/i);
             if (!wakeMatch) {
               console.log('Voice recognition ignored: missing wake word');
               continue;
@@ -572,6 +572,11 @@ export default function App() {
     ttsAudio = pendingAudio;
 
     try {
+      console.log("[TTS] exact payload string:", JSON.stringify(cleanedText));
+      console.log(
+        "[TTS] payload code points:",
+        [...cleanedText].map((char) => `${char} U+${char.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")}`).join(" | ")
+      );
       console.log("[TTS] POST /api/tts", cleanedText);
       const result = await fetchJson("/api/tts", {
         method: "POST",
