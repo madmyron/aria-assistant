@@ -300,6 +300,7 @@ app.post('/api/sms', async (req, res) => {
 });
 
 app.post('/api/tts', async (req, res) => {
+  console.log(`[TTS] Request received. API_KEY present: ${process.env.ELEVENLABS_API_KEY ? 'yes' : 'no'}, VOICE_ID: ${process.env.ELEVENLABS_VOICE_ID || 'missing'}`);
   try {
     const apiKey = process.env.ELEVENLABS_API_KEY || '';
     const voiceId = process.env.ELEVENLABS_VOICE_ID || '';
@@ -336,6 +337,7 @@ app.post('/api/tts', async (req, res) => {
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`[TTS] ElevenLabs API Error: Status ${response.status}, Body: ${errorText}`);
       return res.status(response.status).json({
         error: errorText || 'ElevenLabs request failed'
       });
@@ -345,6 +347,11 @@ app.post('/api/tts', async (req, res) => {
     const audioContent = Buffer.from(arrayBuffer).toString('base64');
     res.json({ audioContent });
   } catch (error) {
+    console.error('[TTS] Critical Error:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
     res.status(500).json({ error: error.message || 'ElevenLabs request failed' });
   }
 });
