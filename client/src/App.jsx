@@ -510,31 +510,7 @@ export default function App() {
   }, []);
 
   function unlockAudio() {
-    console.log("Unlock audio button tapped");
-    try {
-      // Synchronously play a silent sound to unlock the audio context within the user gesture
-      const silentAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAAABAAgABAAACAAAA");
-      silentAudio.play().catch(e => console.warn("Silent play blocked:", e));
-
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (AudioContext) {
-        const audioCtx = new AudioContext();
-        audioCtx.resume().catch(e => console.warn("Ctx resume blocked:", e));
-      }
-    } catch (err) {
-      console.error("Synchronous audio unlock failed", err);
-    }
-
-    // Async part: trigger a silent speak and hide the overlay
-    (async () => {
-      try {
-        await speak(" ");
-      } catch (e) {
-        console.warn("Silent speak failed:", e);
-      } finally {
-        setAudioUnlocked(true);
-      }
-    })();
+    setAudioUnlocked(true);
   }
 
   async function fetchJson(path, options) {
@@ -991,34 +967,18 @@ export default function App() {
   return (
     <>
       {!audioUnlocked && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-          backgroundColor: 'rgba(244, 244, 248, 0.9)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 9999, backdropFilter: 'blur(4px)'
-        }}>
-          <div style={{
-            background: 'white', padding: '32px', borderRadius: '24px',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.1)', textAlign: 'center',
-            maxWidth: '300px', width: '80%', border: '1px solid #eee'
-          }}>
-            <div style={{ fontSize: '40px', marginBottom: '16px' }}>😌</div>
-            <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#1a1a1a' }}>Welcome, Michael</h2>
-            <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#666', lineHeight: '1.5' }}>
-              Tap below to enable Aria's voice and start your session.
-            </p>
-            <button 
-              onClick={unlockAudio}
-              style={{
-                background: 'linear-gradient(135deg, #7F77DD 0%, #5DCAA5 100%)',
-                color: 'white', border: 'none', padding: '12px 24px',
-                borderRadius: '12px', fontSize: '16px', fontWeight: '600',
-                cursor: 'pointer', width: '100%', boxShadow: '0 4px 12px rgba(127, 119, 221, 0.3)'
-              }}
-            >
-              Tap to Begin
-            </button>
-          </div>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <button 
+            onClick={unlockAudio}
+            style={{
+              background: 'linear-gradient(135deg, #7F77DD 0%, #5DCAA5 100%)',
+              color: 'white', border: 'none', padding: '16px 32px',
+              borderRadius: '16px', fontSize: '18px', fontWeight: '600',
+              cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+            }}
+          >
+            Tap to Start
+          </button>
         </div>
       )}
       <div style={{ display:"flex", flexDirection:"column", height:"100vh", maxWidth:"480px", margin:"0 auto", fontFamily:"sans-serif", background:"#f4f4f8", color:"#1a1a1a", colorScheme:"only light" }}>
