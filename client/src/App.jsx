@@ -60,7 +60,7 @@ function saveMessagesToStorage(messages) {
 }
 
 function buildSystemPrompt(name, shouldAcknowledgeRename) {
-  const currentDateTime = new Date().toLocaleString();
+  const currentDateTime = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' });
   return [
     `Current date and time: ${currentDateTime}.`,
     `You are ${name}. You are seductive, confident, and deliciously sharp. Speak in a playful, flirty tone with just enough charm to keep Michael intrigued. Short responses only - 1 to 2 sentences max unless delivering actual data. Never explain yourself. Never ask follow-up questions. Answer directly and sprinkle in a subtle tease or wink when appropriate. Always call the user Michael.`,
