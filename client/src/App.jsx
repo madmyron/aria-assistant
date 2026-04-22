@@ -811,7 +811,11 @@ export default function App() {
         console.log("[sendMessage] appendAssistantReply", { replyText });
         const assistantMessage = createMessage("assistant", replyText);
         setMessages([...updated, assistantMessage]);
-        await speak(assistantMessage.content);
+        try {
+          await speak(assistantMessage.content);
+        } catch (error) {
+          console.warn("[sendMessage] speak failed for assistant reply:", error);
+        }
       };
 
       setMessages(updated);
@@ -1147,20 +1151,20 @@ export default function App() {
         <div ref={bottomRef} />
       </div>
 
-      <div style={{ padding:"12px 16px 20px", background:"white", color:"#1a1a1a", borderTop:"1px solid #eee" }}>
+      <div style={{ boxSizing:"border-box", width:"100%", maxWidth:"480px", padding:"8px 12px", background:"white", color:"#1a1a1a", borderTop:"1px solid #eee" }}>
         {speechSupported && (
           <div style={{ marginBottom:"8px", fontSize:"12px", color: listening ? "#c82333" : "#666" }}>
             {listening ? "Listening... speak now." : "Voice input ready. Just speak to start a conversation."}
           </div>
         )}
-        <div style={{ display:"flex", gap:"8px", alignItems:"center" }}>
+        <div style={{ display:"flex", gap:"8px", alignItems:"center", width:"100%" }}>
           <input
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && sendMessage()}
             placeholder={`Talk to ${assistantName}…`}
-            style={{ flex:1, padding:"11px 16px", borderRadius:"24px", border:"1.5px solid #ddd", fontSize:"16px", outline:"none", background:"#ffff00", color:"#000000", WebkitTextFillColor:"#000000", opacity:1, caretColor:"#000000" }}
+            style={{ flex:1, minWidth:0, padding:"11px 16px", borderRadius:"24px", border:"1.5px solid #ddd", fontSize:"16px", outline:"none", background:"#ffff00", color:"#000000", WebkitTextFillColor:"#000000", opacity:1, caretColor:"#000000" }}
           />
           {speechSupported && (
             <button
