@@ -421,6 +421,7 @@ export default function App() {
             const transcript = result?.[0]?.transcript?.trim();
             console.log('Voice recognition final result:', transcript);
             if (transcript) {
+              console.log('[VOICE] raw transcript:', transcript);
               const text = transcript.trim();
               const wakeMatch = text.match(/^(?:hey\s+aria|aria|area)\b[\s,.:!?\-]*([\s\S]*)$/i);
               const commandText = wakeMatch ? wakeMatch[1].trim() : text;
