@@ -422,21 +422,7 @@ export default function App() {
             console.log('[VOICE] raw transcript:', transcript);
             console.log('Voice recognition final result:', transcript);
             if (transcript) {
-              const text = transcript.trim();
-              const wakeMatch = text.match(/^(?:hey\s+aria|aria|area)\b[\s,.:!?\-]*([\s\S]*)$/i);
-              const commandText = wakeMatch ? wakeMatch[1].trim() : text;
-              const wakeWordOnly = Boolean(wakeMatch && !commandText);
-
-              if (wakeWordOnly) {
-                console.log('Voice recognition wake word heard, waiting for command');
-                continue;
-              }
-
-              if (!commandText) {
-                console.log('Voice recognition ignored: empty command');
-                continue;
-              }
-              
+              const commandText = transcript.trim();
               console.log('Processing voice input:', commandText);
               sendMessage(commandText);
               handledFinalResult = true;
@@ -558,7 +544,6 @@ export default function App() {
     } catch (err) {
       console.warn("Silent audio unlock setup failed:", err);
     }
-    setAudioUnlocked(true);
   }
 
   async function fetchJson(path, options) {
@@ -1035,21 +1020,6 @@ export default function App() {
 
   return (
     <>
-      {!audioUnlocked && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <button 
-            onClick={unlockAudio}
-            style={{
-              background: 'linear-gradient(135deg, #7F77DD 0%, #5DCAA5 100%)',
-              color: 'white', border: 'none', padding: '16px 32px',
-              borderRadius: '16px', fontSize: '18px', fontWeight: '600',
-              cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-            }}
-          >
-            Tap to Start
-          </button>
-        </div>
-      )}
       <div style={{ display:"flex", flexDirection:"column", height:"100vh", maxWidth:"480px", margin:"0 auto", fontFamily:"sans-serif", background:"#f4f4f8", color:"#1a1a1a", colorScheme:"only light" }}>
       <div style={{ background:"linear-gradient(135deg, #7F77DD 0%, #5DCAA5 100%)", display:"flex", flexDirection:"column" }}>
         <div style={{ display:"flex", alignItems:"stretch", height:"88px", overflow:"hidden" }}>
@@ -1207,6 +1177,10 @@ export default function App() {
           {speechSupported && (
             <button
               onClick={() => {
+                if (!audioUnlocked) {
+                  unlockAudio();
+                  setAudioUnlocked(true);
+                }
                 if (recognitionRef.current) {
                   if (listening) {
                     console.log('Stopping voice recognition');
@@ -1237,7 +1211,13 @@ export default function App() {
               {listening ? "⏹" : "🎙"}
             </button>
           )}
-          <button onClick={() => sendMessage()} style={{ background:"linear-gradient(135deg, #7F77DD, #534AB7)", color:"white", border:"none", borderRadius:"50%", width:"44px", height:"44px", fontSize:"18px", cursor:"pointer", flexShrink:0 }}>↑</button>
+          <button onClick={() => {
+            if (!audioUnlocked) {
+              unlockAudio();
+              setAudioUnlocked(true);
+            }
+            sendMessage();
+          }} style={{ background:"linear-gradient(135deg, #7F77DD, #534AB7)", color:"white", border:"none", borderRadius:"50%", width:"44px", height:"44px", fontSize:"18px", cursor:"pointer", flexShrink:0 }}>↑</button>
         </div>
       </div>
     </div>
