@@ -769,7 +769,7 @@ export default function App() {
         blocks.push(formatContextBlock(
           "Hockey Schedules",
           [
-            "The user is asking about hockey schedules. Here is the current schedule data from NYTEX and Texans Hockey Academy. THA stands for Texans Hockey Academy — they are the same organization. Sebastian's THA practices are Tuesday-Thursday 6:00-7:00 AM at NYTEX Sports Centre. Look for THA, Texans Hockey Academy, and weekend clinics in the schedule data",
+            "Sebastian's regular THA (Texans Hockey Academy) practice schedule is Tuesday, Wednesday, and Thursday mornings from 6:00 AM to 7:15 AM at NYTEX Sports Centre. This is a recurring weekly schedule. For weekend clinics or special events, check the live NYTEX schedule data below. Use today's date to calculate which days are upcoming when answering questions about next practice, this week, or next week.",
             `NYTEX:\n${nytexSchedule || "No schedule text returned."}`,
             `Texans Hockey Academy:\n${thaSchedule || "No schedule text returned."}`
           ].join("\n\n")
