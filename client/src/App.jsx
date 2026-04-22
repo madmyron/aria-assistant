@@ -764,6 +764,8 @@ export default function App() {
           fetchPlainText(`/api/fetch-url?url=${encodeURIComponent(nytexUrl)}`),
           fetchPlainText(`/api/fetch-url?url=${encodeURIComponent(thaUrl)}`),
         ]);
+        console.log('NYTEX data:', nytexSchedule);
+        console.log('THA data:', thaSchedule);
         blocks.push(formatContextBlock(
           "Hockey Schedules",
           [
