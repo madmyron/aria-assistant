@@ -283,9 +283,24 @@ function getMapsLink(destination) {
   return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=driving`;
 }
 
-  function detectIntent(text) {
-    const lower = text.toLowerCase();
-    const intents = {
+function detectIntent(text) {
+  const lower = text.toLowerCase();
+  if (lower.includes('sebastian')) {
+    return {
+      weather: false,
+      sports: false,
+      hockeySchedule: true,
+      sms: false,
+      calendarCreate: false,
+      calendarQuery: false,
+      gmail: false,
+      list: false,
+      reminder: false,
+      directions: false,
+      search: false,
+    };
+  }
+  const intents = {
       weather: /weather|temp|forecast|hot|cold|outside/.test(lower),
       sports: /score|game|cowboys|mavs|stars|rangers|mets|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|coyotes|nfl|nba|mlb|nhl|football|basketball|hockey/.test(lower),
       hockeySchedule: /hockey practice|hockey schedule|\btha\b|\bthai\b|sebastian(?:'s)? practice|nytex schedule|practice schedule|skating clinic|power skating|checking clinic/.test(lower),
