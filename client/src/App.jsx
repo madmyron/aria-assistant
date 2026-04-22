@@ -791,6 +791,7 @@ export default function App() {
     let assistantReplySent = false;
     let updated = [];
     const appendAssistantReply = async (replyText) => {
+      console.trace('[REPLY] appendAssistantReply called');
       if (assistantReplySent) {
         console.warn("[sendMessage] appendAssistantReply skipped: reply already sent", { replyText });
         return;
