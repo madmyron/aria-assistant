@@ -420,13 +420,9 @@ export default function App() {
             if (transcript) {
               const text = transcript.trim();
               
-              // If the mic was started manually (not in a passive loop), we don't require a wake word.
-              // Since there is no distinct 'manual' vs 'passive' state tracked in the recognitionRef,
-              // but the user explicitly requested that when they tap the mic button, it should just work,
-              // and the current implementation uses a single recognition instance, 
-              // we need to check if the wake word is present. 
-              // If it's missing, we still process it because the user explicitly triggered the mic.
-              
+              // Bypass wake word check when mic is triggered manually.
+              // Since we use a single recognition instance, we treat all results as manual 
+              // if the wake word is missing, as per user request.
               const wakeMatch = text.match(/^(?:hey\s+aria|aria|area)\b[\s,.:!?\-]*([\s\S]*)$/i);
               const commandText = wakeMatch ? wakeMatch[1].trim() : text;
               
