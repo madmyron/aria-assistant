@@ -596,6 +596,7 @@ export default function App() {
   }
 
   async function speak(text) {
+    console.log(`[SPEAK_CHECK] audioUnlocked=${audioUnlocked}, voiceOn=${voiceOn}, hostname=${window.location.hostname}`);
     if (!audioUnlocked && window.location.hostname !== 'localhost') {
       console.warn("[TTS] Audio not unlocked on mobile, skipping playback");
       return;
@@ -824,6 +825,7 @@ export default function App() {
         }
         assistantReplySent = true;
         console.log("[sendMessage] appendAssistantReply", { replyText });
+        console.log(`[SPEAK_CHECK] audioUnlocked=${audioUnlocked}, voiceOn=${voiceOn}, hostname=${window.location.hostname}`);
         const assistantMessage = createMessage("assistant", replyText);
         setMessages([...updated, assistantMessage]);
         await speak(assistantMessage.content);
