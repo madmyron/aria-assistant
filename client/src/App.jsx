@@ -1002,67 +1002,6 @@ export default function App() {
 
   return (
     <>
-      {window.location.hostname !== 'localhost' && (
-        <div style={{
-          position: 'fixed', bottom: '10px', right: '10px',
-          background: 'rgba(0,0,0,0.8)', color: 'white',
-          padding: '10px', borderRadius: '12px', fontSize: '12px',
-          zIndex: 10000, fontFamily: 'monospace', border: '1px solid #444'
-        }}>
-          <div style={{ marginBottom: '4px' }}>AudioUnlocked: {String(audioUnlocked)}</div>
-          <div style={{ marginBottom: '8px' }}>VoiceOn: {String(voiceOn)}</div>
-          <div style={{ display: 'flex', gap: '4px', flexDirection: 'column' }}>
-            <button 
-              onClick={() => {
-                try {
-                  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                  const buffer = audioCtx.createBuffer(1, 1, 22050);
-                  const source = audioCtx.createBufferSource();
-                  source.buffer = buffer;
-                  source.connect(audioCtx.destination);
-                  source.start(0);
-                  alert("Played (Web Audio API)!");
-                } catch (e) {
-                  alert("Error: " + e.message);
-                }
-              }}
-              style={{ background: '#5DCAA5', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '11px' }}
-            >
-              Test Audio
-            </button>
-            <button 
-              onClick={async () => {
-                try {
-                  const res = await fetch('https://aria-assistant-production-6730.up.railway.app/api/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: "Hello Michael" })
-                  });
-                  const data = await res.json();
-                  const base64data = data.audioContent;
-                  if (!base64data) throw new Error("No audio content in response");
-                  
-                  const binaryString = atob(base64data);
-                  const bytes = new Uint8Array(binaryString.length);
-                  for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-                  
-                  const audioBuffer = await (window.audioCtx || new (window.AudioContext || window.webkitAudioContext)()).decodeAudioData(bytes.buffer);
-                  const source = (window.audioCtx || new (window.AudioContext || window.webkitAudioContext)()).createBufferSource();
-                  source.buffer = audioBuffer;
-                  source.connect((window.audioCtx || new (window.AudioContext || window.webkitAudioContext)()).destination);
-                  source.start(0);
-                  alert("TTS played!");
-                } catch (e) {
-                  alert("TTS Error: " + e.message);
-                }
-              }}
-              style={{ background: '#7F77DD', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '11px' }}
-            >
-              Test TTS
-            </button>
-          </div>
-        </div>
-      )}
       {!audioUnlocked && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <button 
