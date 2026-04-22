@@ -788,6 +788,23 @@ export default function App() {
     console.trace('[sendMessage] called');
     if (sendMessageInProgress) return;
     sendMessageInProgress = true;
+    let assistantReplySent = false;
+    let updated = [];
+    const appendAssistantReply = async (replyText) => {
+      if (assistantReplySent) {
+        console.warn("[sendMessage] appendAssistantReply skipped: reply already sent", { replyText });
+        return;
+      }
+      assistantReplySent = true;
+      console.log("[sendMessage] appendAssistantReply", { replyText });
+      const assistantMessage = createMessage("assistant", replyText);
+      setMessages([...updated, assistantMessage]);
+      try {
+        await speak(assistantMessage.content);
+      } catch (error) {
+        console.warn("[sendMessage] speak failed for assistant reply:", error);
+      }
+    };
     try {
       console.log('sendMessage called with:', overrideText);
       const text = typeof overrideText === 'string' ? overrideText.trim() : input.trim();
@@ -797,26 +814,10 @@ export default function App() {
         return;
       }
 
-      let assistantReplySent = false;
       const userText = text;
       const userMsg = createMessage("user", userText);
-      const updated = [...messages, userMsg];
+      updated = [...messages, userMsg];
       const intents = detectIntent(userText);
-      const appendAssistantReply = async (replyText) => {
-        if (assistantReplySent) {
-          console.warn("[sendMessage] appendAssistantReply skipped: reply already sent", { replyText });
-          return;
-        }
-        assistantReplySent = true;
-        console.log("[sendMessage] appendAssistantReply", { replyText });
-        const assistantMessage = createMessage("assistant", replyText);
-        setMessages([...updated, assistantMessage]);
-        try {
-          await speak(assistantMessage.content);
-        } catch (error) {
-          console.warn("[sendMessage] speak failed for assistant reply:", error);
-        }
-      };
 
       setMessages(updated);
       if (!overrideText) setInput("");
