@@ -333,9 +333,22 @@ app.post('/api/tts', async (req, res) => {
       });
     }
 
-    const arrayBuffer = await response.arrayBuffer();
-    const audioContent = Buffer.from(arrayBuffer).toString('base64');
-    res.json({ audioContent });
+    res.status(200);
+    res.setHeader('Content-Type', 'audio/mpeg');
+    if (response.body) {
+      response.body.on('error', (streamError) => {
+        console.error('[TTS] Stream error:', streamError);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Failed to stream TTS audio' });
+        } else {
+          res.destroy(streamError);
+        }
+      });
+      response.body.pipe(res);
+      return;
+    }
+
+    return res.status(500).json({ error: 'OpenAI returned no audio stream' });
   } catch (error) {
     console.error('[TTS] Critical Error:', error);
     res.status(500).json({ error: error.message || 'OpenAI request failed' });

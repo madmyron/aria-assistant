@@ -5,6 +5,7 @@ const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:30
 const AVATAR = ellyAvatar;
 const DEFAULT_NAME = "Aria";
 let ttsAudio = null;
+let ttsObjectUrl = null;
 let ttsPlaying = false;
 let audioCtx = null;
 let sendMessageInProgress = false;
@@ -562,7 +563,12 @@ export default function App() {
     if (ttsAudio) {
       ttsAudio.pause();
       ttsAudio.currentTime = 0;
+      ttsAudio.src = "";
       ttsAudio = null;
+    }
+    if (ttsObjectUrl) {
+      URL.revokeObjectURL(ttsObjectUrl);
+      ttsObjectUrl = null;
     }
     ttsPlaying = false;
   }
@@ -600,91 +606,74 @@ export default function App() {
         [...cleanedText].map((char) => `${char} U+${char.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")}`).join(" | ")
       );
       console.log("[TTS] POST /api/tts", cleanedText);
-      const result = await fetchJson("/api/tts", {
+      const response = await fetch(`${API_BASE}/api/tts`, {
         method: "POST",
         headers: { "Content-Type": "application/json; charset=utf-8" },
         body: JSON.stringify({ text: cleanedText })
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `Request failed with status ${response.status}`);
+      }
 
       if (ttsAudio !== pendingAudio) {
         console.log("[TTS] speak cancelled before playback");
         return;
       }
 
-      const base64data = result?.audioContent;
-      console.log("[TTS] /api/tts response", { hasAudio: Boolean(base64data), length: base64data?.length || 0 });
-      if (!base64data) {
-        ttsAudio = null;
-        ttsPlaying = false;
+      const blob = await response.blob();
+      console.log("[TTS] /api/tts response", { size: blob.size, type: blob.type });
+      if (ttsAudio !== pendingAudio) {
+        console.log("[TTS] speak cancelled before playback");
         return;
       }
 
-      if (window.location.hostname === 'localhost') {
-        const audio = new Audio("data:audio/mp3;base64," + base64data);
-        ttsAudio = audio;
-        ariaIsSpeaking = true;
-        audio.onended = () => {
-          if (ttsAudio === audio) ttsAudio = null;
-          ttsPlaying = false;
-          ariaIsSpeaking = false;
-          if (shouldResumeRecognitionAfterSpeech && recognitionRef.current) {
-            if (recognitionRestartTimer) clearTimeout(recognitionRestartTimer);
-            recognitionRestartTimer = setTimeout(() => {
-              recognitionRestartTimer = null;
-              if (shouldResumeRecognitionAfterSpeech && recognitionRef.current && !listening) {
-                try { recognitionRef.current.start(); } catch (e) {}
-              }
-              shouldResumeRecognitionAfterSpeech = false;
-            }, 1000);
-          } else {
+      const url = URL.createObjectURL(blob);
+      ttsObjectUrl = url;
+      const audio = new Audio(url);
+      ttsAudio = audio;
+      ariaIsSpeaking = true;
+      audio.onended = () => {
+        if (ttsAudio === audio) ttsAudio = null;
+        if (ttsObjectUrl === url) {
+          URL.revokeObjectURL(url);
+          ttsObjectUrl = null;
+        }
+        ttsPlaying = false;
+        ariaIsSpeaking = false;
+        if (shouldResumeRecognitionAfterSpeech && recognitionRef.current) {
+          if (recognitionRestartTimer) clearTimeout(recognitionRestartTimer);
+          recognitionRestartTimer = setTimeout(() => {
+            recognitionRestartTimer = null;
+            if (shouldResumeRecognitionAfterSpeech && recognitionRef.current && !listening) {
+              try { recognitionRef.current.start(); } catch (e) {}
+            }
             shouldResumeRecognitionAfterSpeech = false;
-          }
-        };
-        audio.onerror = () => {
-          if (ttsAudio === audio) ttsAudio = null;
-          ttsPlaying = false;
-          ariaIsSpeaking = false;
+          }, 1000);
+        } else {
           shouldResumeRecognitionAfterSpeech = false;
-        };
-        await audio.play();
-      } else {
-        // Mobile/Deployed: Use Web Audio API
-        const binaryString = atob(base64data);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i);
-        
-        const arrayBuffer = bytes.buffer;
-        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-        
-        const source = audioCtx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(audioCtx.destination);
-        
-        ariaIsSpeaking = true;
-        source.onended = () => {
-          ttsPlaying = false;
-          ariaIsSpeaking = false;
-          if (shouldResumeRecognitionAfterSpeech && recognitionRef.current) {
-            if (recognitionRestartTimer) clearTimeout(recognitionRestartTimer);
-            recognitionRestartTimer = setTimeout(() => {
-              recognitionRestartTimer = null;
-              if (shouldResumeRecognitionAfterSpeech && recognitionRef.current && !listening) {
-                try { recognitionRef.current.start(); } catch (e) {}
-              }
-              shouldResumeRecognitionAfterSpeech = false;
-            }, 1000);
-          } else {
-            shouldResumeRecognitionAfterSpeech = false;
-          }
-        };
-        
-        source.start(0);
-      }
+        }
+      };
+      audio.onerror = () => {
+        if (ttsAudio === audio) ttsAudio = null;
+        if (ttsObjectUrl === url) {
+          URL.revokeObjectURL(url);
+          ttsObjectUrl = null;
+        }
+        ttsPlaying = false;
+        ariaIsSpeaking = false;
+        shouldResumeRecognitionAfterSpeech = false;
+      };
+      await audio.play();
     } catch (error) {
       console.warn("[TTS] speak failed:", error);
       if (ttsAudio === pendingAudio) {
         ttsAudio = null;
+      }
+      if (ttsObjectUrl) {
+        URL.revokeObjectURL(ttsObjectUrl);
+        ttsObjectUrl = null;
       }
       ttsPlaying = false;
       ariaIsSpeaking = false;
