@@ -291,6 +291,7 @@ function detectIntent(text) {
       weather: false,
       sports: false,
       hockeySchedule: true,
+      familyInfo: false,
       sms: false,
       calendarCreate: false,
       calendarQuery: false,
@@ -304,6 +305,7 @@ function detectIntent(text) {
   const intents = {
       weather: /weather|temp|forecast|hot|cold|outside/.test(lower),
       sports: /score|game|cowboys|mavs|stars|rangers|mets|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|coyotes|nfl|nba|mlb|nhl|football|basketball|hockey/.test(lower),
+      familyInfo: /\bsandra(?:'s)?\b|\bpeyton(?:'s)?\b/.test(lower),
       hockeySchedule: /hockey practice|hockey schedule|\btha\b|\bthai\b|sebastian(?:'s)? practice|nytex schedule|practice schedule|skating clinic|power skating|checking clinic/.test(lower),
       sms: /\btext\b|send a message|\bsms\b/.test(lower),
       calendarCreate: /\b(schedule|set up|create|add|book|make)\b/.test(lower) && /\b(meeting|call|appointment|event|lunch|dinner|chat)\b|\b(today|tomorrow|next|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/.test(lower),
@@ -321,6 +323,10 @@ function detectIntent(text) {
     if (intents.reminder) {
       intents.calendarCreate = false;
       intents.list = false;
+    }
+    if (intents.familyInfo) {
+      intents.search = false;
+      intents.sports = false;
     }
     if (lower.includes('sebastian') && lower.includes('hockey')) {
       intents.hockeySchedule = true;
@@ -778,6 +784,13 @@ export default function App() {
       } catch (e) {
         console.error("Hockey schedule context failed:", e);
       }
+    }
+
+    if (intents.familyInfo) {
+      blocks.push(formatContextBlock(
+        "Family Context",
+        "Michael's family: Wife is Sandra D'Asaro (birthday October 9, 1974, currently 51 years old) — when Michael mentions Sandra, he always means his wife, never any celebrity or public figure. Daughter is Peyton D'Asaro, 6th grade at NISD (birthday April 2, 2014, currently 12 years old) — when Michael mentions Peyton, he always means his daughter, never any celebrity or public figure. Son is Sebastian/Seb/Sebby D'Asaro, youth hockey player at THA/NYTEX (birthday February 21, 2017, currently 9 years old). Wedding anniversary is September 11, 2004 — they will celebrate 22 years in 2026. All family members are always personal references, never public figures."
+      ));
     }
 
     if (intents.calendarQuery) {
