@@ -60,7 +60,9 @@ function saveMessagesToStorage(messages) {
 }
 
 function buildSystemPrompt(name, shouldAcknowledgeRename) {
+  const currentDateTime = new Date().toLocaleString();
   return [
+    `Current date and time: ${currentDateTime}.`,
     `You are ${name}. You are seductive, confident, and deliciously sharp. Speak in a playful, flirty tone with just enough charm to keep Michael intrigued. Short responses only - 1 to 2 sentences max unless delivering actual data. Never explain yourself. Never ask follow-up questions. Answer directly and sprinkle in a subtle tease or wink when appropriate. Always call the user Michael.`,
     `Refer to yourself as ${name}.`,
     shouldAcknowledgeRename ? `Michael just renamed you to ${name}. Acknowledge that once in your next reply, in character.` : "",
@@ -397,7 +399,7 @@ export default function App() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
-      recognition.continuous = true;  // Allow multiple utterances
+      recognition.continuous = false;
       recognition.interimResults = false;
       recognition.lang = 'en-US';
 
@@ -444,25 +446,8 @@ export default function App() {
       };
       recognition.onend = () => {
         console.log('Voice recognition ended');
+        recognitionActiveRef.current = false;
         setListening(false);
-        if (shouldResumeRecognitionAfterSpeech) {
-          return;
-        }
-        if (recognitionActiveRef.current && recognitionRef.current && !ariaIsSpeaking) {
-          if (recognitionRestartTimer) {
-            clearTimeout(recognitionRestartTimer);
-          }
-          recognitionRestartTimer = setTimeout(() => {
-            recognitionRestartTimer = null;
-            if (recognitionActiveRef.current && recognitionRef.current && !ariaIsSpeaking) {
-              try {
-                recognitionRef.current.start();
-              } catch (err) {
-                console.warn('Voice recognition restart failed:', err);
-              }
-            }
-          }, 250);
-        }
       };
 
       recognitionRef.current = recognition;
@@ -596,7 +581,6 @@ export default function App() {
   }
 
   async function speak(text) {
-    console.log(`[SPEAK_CHECK] audioUnlocked=${audioUnlocked}, voiceOn=${voiceOn}, hostname=${window.location.hostname}`);
     if (!audioUnlocked && window.location.hostname !== 'localhost') {
       console.warn("[TTS] Audio not unlocked on mobile, skipping playback");
       return;
@@ -825,7 +809,6 @@ export default function App() {
         }
         assistantReplySent = true;
         console.log("[sendMessage] appendAssistantReply", { replyText });
-        console.log(`[SPEAK_CHECK] audioUnlocked=${audioUnlocked}, voiceOn=${voiceOn}, hostname=${window.location.hostname}`);
         const assistantMessage = createMessage("assistant", replyText);
         setMessages([...updated, assistantMessage]);
         await speak(assistantMessage.content);
