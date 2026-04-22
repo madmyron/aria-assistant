@@ -524,6 +524,15 @@ export default function App() {
     } catch (err) {
       console.error("Web Audio API unlock failed:", err);
     }
+    try {
+      const silentAudio = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=");
+      silentAudio.volume = 0;
+      void silentAudio.play().catch((err) => {
+        console.warn("Silent audio unlock failed:", err);
+      });
+    } catch (err) {
+      console.warn("Silent audio unlock setup failed:", err);
+    }
     setAudioUnlocked(true);
   }
 
