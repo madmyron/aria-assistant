@@ -408,6 +408,55 @@ app.get('/api/weather', async (_req, res) => {
   }
 });
 
+app.get('/api/fetch-url', cors(), async (req, res) => {
+  try {
+    const url = String(req.query?.url || '').trim();
+    if (!url) {
+      return res.status(400).json({ error: 'url is required' });
+    }
+
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      return res.status(400).json({ error: 'Invalid url' });
+    }
+
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      return res.status(400).json({ error: 'Only http and https URLs are supported' });
+    }
+
+    const response = await fetch(parsedUrl.toString(), {
+      headers: {
+        'User-Agent': 'AriaAssistant/1.0'
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return res.status(response.status).json({ error: errorText || 'Failed to fetch URL' });
+    }
+
+    const html = await response.text();
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&#39;/gi, "'")
+      .replace(/&quot;/gi, '"')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    res.type('text/plain').send(text);
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'URL fetch failed' });
+  }
+});
+
 app.get('/api/sports', async (req, res) => {
   try {
     const { sport, league } = detectSport(req.query?.query || '');

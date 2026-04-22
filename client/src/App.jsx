@@ -287,6 +287,7 @@ function getMapsLink(destination) {
     const intents = {
       weather: /weather|temp|forecast|hot|cold|outside/.test(lower),
       sports: /score|game|cowboys|mavs|stars|rangers|mets|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|coyotes|nfl|nba|mlb|nhl|football|basketball|hockey/.test(lower),
+      hockeySchedule: /hockey practice|hockey schedule|\btha\b|sebastian(?:'s)? practice|nytex schedule|practice schedule|skating clinic|power skating|checking clinic/.test(lower),
       sms: /\btext\b|send a message|\bsms\b/.test(lower),
       calendarCreate: /\b(schedule|set up|create|add|book|make)\b/.test(lower) && /\b(meeting|call|appointment|event|lunch|dinner|chat)\b|\b(today|tomorrow|next|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/.test(lower),
       calendarQuery: /\b(my calendar|my schedule|what do i have|my appointments|my events)\b/.test(lower),
@@ -310,7 +311,8 @@ function getMapsLink(destination) {
       // If no other specific action/query intent is matched, trigger search as fallback
       const hasOtherIntent = intents.weather || intents.sports || intents.sms || 
                               intents.calendarCreate || intents.calendarQuery || 
-                              intents.gmail || intents.reminder || intents.directions;
+                              intents.gmail || intents.reminder || intents.directions ||
+                              intents.hockeySchedule;
       
       if (!hasOtherIntent || /search|look up|find|what is|when does|who is|latest/.test(lower)) {
         intents.search = true;
@@ -549,6 +551,21 @@ export default function App() {
     }
   }
 
+  async function fetchPlainText(path) {
+    console.log(`Fetching text: ${API_BASE}${path}`);
+    try {
+      const res = await fetch(`${API_BASE}${path}`);
+      const text = await res.text();
+      if (!res.ok) {
+        throw new Error(text || `Request failed with status ${res.status}`);
+      }
+      return text;
+    } catch (err) {
+      console.error(`Fetch text error for ${path}:`, err);
+      throw err;
+    }
+  }
+
   function sanitizeSpeechText(text) {
     const cleaned = String(text || "")
       .replace(/https?:\/\/[^\s]+/g, "")
@@ -715,6 +732,27 @@ export default function App() {
         blocks.push(formatContextBlock("Sports", (sports.games || []).join(" | ") || "No games found."));
       } catch (e) {
         console.error("Sports context failed:", e);
+      }
+    }
+
+    if (intents.hockeySchedule) {
+      try {
+        const nytexUrl = 'https://nytex.frontline-connect.com/weeksched.cfm?fac=nytex&facid=1';
+        const thaUrl = 'https://www.texanshockeyacademy.com/';
+        const [nytexSchedule, thaSchedule] = await Promise.all([
+          fetchPlainText(`/api/fetch-url?url=${encodeURIComponent(nytexUrl)}`),
+          fetchPlainText(`/api/fetch-url?url=${encodeURIComponent(thaUrl)}`),
+        ]);
+        blocks.push(formatContextBlock(
+          "Hockey Schedules",
+          [
+            "The user is asking about hockey schedules. Here is the current schedule data from NYTEX and Texans Hockey Academy. Sebastian's THA practices are Tuesday-Thursday 6:00-7:00 AM. Look for THA, Texas Hockey Academy, and weekend clinics in the schedule data.",
+            `NYTEX:\n${nytexSchedule || "No schedule text returned."}`,
+            `Texans Hockey Academy:\n${thaSchedule || "No schedule text returned."}`
+          ].join("\n\n")
+        ));
+      } catch (e) {
+        console.error("Hockey schedule context failed:", e);
       }
     }
 
