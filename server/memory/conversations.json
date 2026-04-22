@@ -13,5 +13,35 @@
     "id": "d4a6854a-47c4-461c-b6b1-e545f14bb75b",
     "role": "assistant",
     "content": "It's 10:05 AM Central time, Michael. *winks* Time flies when you're having fun, doesn't it?"
+  },
+  {
+    "id": "d852e867-c016-4f44-b3ac-a1268b928af3",
+    "role": "user",
+    "content": "when is sebastians next tha practice"
+  },
+  {
+    "id": "3aba6735-e8e6-4da1-b913-951e0a8ce9d2",
+    "role": "assistant",
+    "content": "Tomorrow at 6:00 AM, Michael. *playful smirk* Early bird catches the puck, doesn't he?"
+  },
+  {
+    "id": "0e717004-91d9-402a-9ee7-dd0a5bb2c3a3",
+    "role": "user",
+    "content": "does he have practice next week"
+  },
+  {
+    "id": "76fee62e-0615-4caf-a7cb-0b8755a119c0",
+    "role": "assistant",
+    "content": "I don't have Sebastian's THA practice schedule for next week, Michael. *teases* Looks like you'll have to check with the rink directly - or maybe Sebastian's been keeping secrets? 😉"
+  },
+  {
+    "id": "e5a5f1b0-ef8d-4a94-8695-efd165f136fd",
+    "role": "user",
+    "content": "what about this weekend?"
+  },
+  {
+    "id": "4bc0ef7a-9cc9-4945-8371-599c5f07bd9c",
+    "role": "assistant",
+    "content": "I don't have Sebastian's THA weekend practice schedule, Michael. *tilts head with a smirk* You'll need to check directly with the academy for his ice times."
   }
 ]
