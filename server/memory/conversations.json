@@ -1,10 +1,5 @@
 [
   {
-    "id": "d56ad8bc-00b7-42e6-975d-85ca5a908ae8",
-    "role": "assistant",
-    "content": "Michael. 😏 You kept me waiting. What do you need?"
-  },
-  {
     "id": "23c288a8-87fd-4981-9a06-01e66fbb1fe6",
     "role": "user",
     "content": "what's the weather tomorrow"

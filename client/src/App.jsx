@@ -282,7 +282,7 @@ function getMapsLink(destination) {
     const lower = text.toLowerCase();
     const intents = {
       weather: /weather|temp|forecast|hot|cold|outside/.test(lower),
-      sports: /score|game|cowboys|mavs|stars|rangers|mets|nfl|nba|mlb|nhl|football|basketball|hockey/.test(lower),
+      sports: /score|game|cowboys|mavs|stars|rangers|mets|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|canucks|kings|ducks|sharks|stars|maples leafs|senators|habs|canadiens|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|canucks|kings|ducks|sharks|stars|maples leafs|senators|habs|canadiens|nfl|nba|mlb|nhl|football|basketball|hockey/.test(lower),
       sms: /\btext\b|send a message|\bsms\b/.test(lower),
       calendarCreate: /\b(schedule|set up|create|add|book|make)\b/.test(lower) && /\b(meeting|call|appointment|event|lunch|dinner|chat)\b|\b(today|tomorrow|next|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/.test(lower),
       calendarQuery: /\b(my calendar|my schedule|what do i have|my appointments|my events)\b/.test(lower),
@@ -415,24 +415,30 @@ export default function App() {
             console.log('Voice recognition ignored non-final result');
             continue;
           }
-          const transcript = result?.[0]?.transcript?.trim();
-          console.log('Voice recognition final result:', transcript);
-          if (transcript) {
-            const text = transcript.trim();
-            const wakeMatch = text.match(/^(?:hey\s+aria|aria|area)\b[\s,.:!?\-]*([\s\S]*)$/i);
-            if (!wakeMatch) {
-              console.log('Voice recognition ignored: missing wake word');
-              continue;
+            const transcript = result?.[0]?.transcript?.trim();
+            console.log('Voice recognition final result:', transcript);
+            if (transcript) {
+              const text = transcript.trim();
+              
+              // If the mic was started manually (not in a passive loop), we don't require a wake word.
+              // Since there is no distinct 'manual' vs 'passive' state tracked in the recognitionRef,
+              // but the user explicitly requested that when they tap the mic button, it should just work,
+              // and the current implementation uses a single recognition instance, 
+              // we need to check if the wake word is present. 
+              // If it's missing, we still process it because the user explicitly triggered the mic.
+              
+              const wakeMatch = text.match(/^(?:hey\s+aria|aria|area)\b[\s,.:!?\-]*([\s\S]*)$/i);
+              const commandText = wakeMatch ? wakeMatch[1].trim() : text;
+              
+              if (!commandText) {
+                console.log('Voice recognition ignored: empty command');
+                continue;
+              }
+              
+              console.log('Processing voice input:', commandText);
+              sendMessage(commandText);
+              handledFinalResult = true;
             }
-            const commandText = wakeMatch[1].trim();
-            if (!commandText) {
-              console.log('Voice recognition ignored: wake word only');
-              continue;
-            }
-            console.log('Processing voice input:', commandText);
-            sendMessage(commandText);
-            handledFinalResult = true;
-          }
         }
         if (!handledFinalResult) {
           console.log('No final transcript received');
