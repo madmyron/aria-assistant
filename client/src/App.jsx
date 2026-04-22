@@ -282,7 +282,7 @@ function getMapsLink(destination) {
     const lower = text.toLowerCase();
     const intents = {
       weather: /weather|temp|forecast|hot|cold|outside/.test(lower),
-      sports: /score|game|cowboys|mavs|stars|rangers|mets|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|canucks|kings|ducks|sharks|stars|maples leafs|senators|habs|canadiens|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|canucks|kings|ducks|sharks|stars|maples leafs|senators|habs|canadiens|nfl|nba|mlb|nhl|football|basketball|hockey/.test(lower),
+      sports: /score|game|cowboys|mavs|stars|rangers|mets|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|coyotes|nfl|nba|mlb|nhl|football|basketball|hockey/.test(lower),
       sms: /\btext\b|send a message|\bsms\b/.test(lower),
       calendarCreate: /\b(schedule|set up|create|add|book|make)\b/.test(lower) && /\b(meeting|call|appointment|event|lunch|dinner|chat)\b|\b(today|tomorrow|next|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/.test(lower),
       calendarQuery: /\b(my calendar|my schedule|what do i have|my appointments|my events)\b/.test(lower),
