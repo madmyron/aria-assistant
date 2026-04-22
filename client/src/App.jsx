@@ -8,6 +8,7 @@ let ttsAudio = null;
 let ttsObjectUrl = null;
 let ttsPlaying = false;
 let audioCtx = null;
+let audioUnlocked = false;
 let sendMessageInProgress = false;
 let ariaIsSpeaking = false;
 let recognitionRestartTimer = null;
@@ -351,7 +352,6 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
-  const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [voiceOn, setVoiceOn] = useState(true);
   const recognitionRef = useRef(null);
   const recognitionActiveRef = useRef(false);
@@ -544,6 +544,7 @@ export default function App() {
     } catch (err) {
       console.warn("Silent audio unlock setup failed:", err);
     }
+    audioUnlocked = true;
   }
 
   async function fetchJson(path, options) {
@@ -1179,7 +1180,6 @@ export default function App() {
               onClick={() => {
                 if (!audioUnlocked) {
                   unlockAudio();
-                  setAudioUnlocked(true);
                 }
                 if (recognitionRef.current) {
                   if (listening) {
@@ -1214,7 +1214,6 @@ export default function App() {
           <button onClick={() => {
             if (!audioUnlocked) {
               unlockAudio();
-              setAudioUnlocked(true);
             }
             sendMessage();
           }} style={{ background:"linear-gradient(135deg, #7F77DD, #534AB7)", color:"white", border:"none", borderRadius:"50%", width:"44px", height:"44px", fontSize:"18px", cursor:"pointer", flexShrink:0 }}>↑</button>
