@@ -354,6 +354,7 @@ export default function App() {
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [voiceOn, setVoiceOn] = useState(true);
   const recognitionRef = useRef(null);
+  const recognitionActiveRef = useRef(false);
   const bottomRef = useRef(null);
   const memoryInitialized = useRef(false);
 
@@ -402,6 +403,7 @@ export default function App() {
 
       recognition.onstart = () => {
         console.log('Voice recognition started');
+        recognitionActiveRef.current = true;
         setListening(true);
       };
       recognition.onresult = (event) => {
@@ -420,13 +422,15 @@ export default function App() {
             console.log('Voice recognition final result:', transcript);
             if (transcript) {
               const text = transcript.trim();
-              
-              // Bypass wake word check when mic is triggered manually.
-              // Since we use a single recognition instance, we treat all results as manual 
-              // if the wake word is missing, as per user request.
               const wakeMatch = text.match(/^(?:hey\s+aria|aria|area)\b[\s,.:!?\-]*([\s\S]*)$/i);
               const commandText = wakeMatch ? wakeMatch[1].trim() : text;
-              
+              const wakeWordOnly = Boolean(wakeMatch && !commandText);
+
+              if (wakeWordOnly) {
+                console.log('Voice recognition wake word heard, waiting for command');
+                continue;
+              }
+
               if (!commandText) {
                 console.log('Voice recognition ignored: empty command');
                 continue;
@@ -446,11 +450,30 @@ export default function App() {
         if (event.error === 'not-allowed') {
           alert('Microphone access denied. Please allow microphone access and try again.');
         }
+        recognitionActiveRef.current = false;
         setListening(false);
       };
       recognition.onend = () => {
         console.log('Voice recognition ended');
         setListening(false);
+        if (shouldResumeRecognitionAfterSpeech) {
+          return;
+        }
+        if (recognitionActiveRef.current && recognitionRef.current && !ariaIsSpeaking) {
+          if (recognitionRestartTimer) {
+            clearTimeout(recognitionRestartTimer);
+          }
+          recognitionRestartTimer = setTimeout(() => {
+            recognitionRestartTimer = null;
+            if (recognitionActiveRef.current && recognitionRef.current && !ariaIsSpeaking) {
+              try {
+                recognitionRef.current.start();
+              } catch (err) {
+                console.warn('Voice recognition restart failed:', err);
+              }
+            }
+          }, 250);
+        }
       };
 
       recognitionRef.current = recognition;
@@ -460,16 +483,17 @@ export default function App() {
     }
 
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.onresult = null;
-        recognitionRef.current.onstart = null;
-        recognitionRef.current.onerror = null;
-        recognitionRef.current.onend = null;
-        try {
-          recognitionRef.current.stop();
-        } catch {}
-        recognitionRef.current = null;
-      }
+        if (recognitionRef.current) {
+          recognitionRef.current.onresult = null;
+          recognitionRef.current.onstart = null;
+          recognitionRef.current.onerror = null;
+          recognitionRef.current.onend = null;
+          recognitionActiveRef.current = false;
+          try {
+            recognitionRef.current.stop();
+          } catch {}
+          recognitionRef.current = null;
+        }
     };
   }, []);
 
@@ -629,6 +653,14 @@ export default function App() {
       if (ttsAudio !== pendingAudio) {
         console.log("[TTS] speak cancelled before playback");
         return;
+      }
+
+      if (audioCtx) {
+        try {
+          await audioCtx.resume();
+        } catch (err) {
+          console.warn("[TTS] audioCtx resume failed:", err);
+        }
       }
 
       const blob = await response.blob();
@@ -1177,9 +1209,11 @@ export default function App() {
                 if (recognitionRef.current) {
                   if (listening) {
                     console.log('Stopping voice recognition');
+                    recognitionActiveRef.current = false;
                     recognitionRef.current.stop();
                   } else {
                     console.log('Starting voice recognition');
+                    recognitionActiveRef.current = true;
                     recognitionRef.current.start();
                   }
                 } else {
