@@ -573,6 +573,15 @@ export default function App() {
     return cleaned;
   }
 
+  function appendAssistantDebugMessage(content) {
+    const message = createMessage("assistant", content);
+    setMessages((prev) => {
+      const next = [...prev, message];
+      saveMessagesToStorage(next);
+      return next;
+    });
+  }
+
   function stopSpeaking() {
     ariaIsSpeaking = false;
     shouldResumeRecognitionAfterSpeech = false;
@@ -596,6 +605,7 @@ export default function App() {
   async function speak(text) {
     if (!audioUnlocked && window.location.hostname !== 'localhost') {
       console.warn("[TTS] Audio not unlocked on mobile, skipping playback");
+      appendAssistantDebugMessage("[DEBUG] Audio not unlocked");
       return;
     }
     console.trace('[TTS] speak called');
@@ -694,8 +704,10 @@ export default function App() {
         shouldResumeRecognitionAfterSpeech = false;
       };
       await audio.play();
+      appendAssistantDebugMessage("[DEBUG] Audio playing");
     } catch (error) {
       console.warn("[TTS] speak failed:", error);
+      appendAssistantDebugMessage(`[DEBUG] Audio error: ${error?.message || String(error)}`);
       if (ttsAudio === pendingAudio) {
         ttsAudio = null;
       }
