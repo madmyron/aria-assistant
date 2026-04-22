@@ -306,6 +306,11 @@ function getMapsLink(destination) {
       intents.calendarCreate = false;
       intents.list = false;
     }
+    if (lower.includes('sebastian') && lower.includes('hockey')) {
+      intents.hockeySchedule = true;
+      intents.search = false;
+      intents.sports = false;
+    }
     if (intents.list) {
       // List intent is a specific action, we don't need search
     } else {
