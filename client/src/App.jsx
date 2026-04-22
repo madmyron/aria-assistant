@@ -746,7 +746,7 @@ export default function App() {
         blocks.push(formatContextBlock(
           "Hockey Schedules",
           [
-            "The user is asking about hockey schedules. Here is the current schedule data from NYTEX and Texans Hockey Academy. Sebastian's THA practices are Tuesday-Thursday 6:00-7:00 AM. Look for THA, Texas Hockey Academy, and weekend clinics in the schedule data.",
+            "The user is asking about hockey schedules. Here is the current schedule data from NYTEX and Texans Hockey Academy. THA stands for Texans Hockey Academy — they are the same organization. Sebastian's THA practices are Tuesday-Thursday 6:00-7:00 AM at NYTEX Sports Centre. Look for THA, Texans Hockey Academy, and weekend clinics in the schedule data",
             `NYTEX:\n${nytexSchedule || "No schedule text returned."}`,
             `Texans Hockey Academy:\n${thaSchedule || "No schedule text returned."}`
           ].join("\n\n")
