@@ -300,16 +300,10 @@ app.post('/api/sms', async (req, res) => {
 });
 
 app.post('/api/tts', async (req, res) => {
-  console.log(`[TTS] Request received. API_KEY present: ${process.env.ELEVENLABS_API_KEY ? 'yes' : 'no'}, VOICE_ID: ${process.env.ELEVENLABS_VOICE_ID || 'missing'}`);
   try {
-    const apiKey = process.env.ELEVENLABS_API_KEY || '';
-    const voiceId = process.env.ELEVENLABS_VOICE_ID || '';
+    const apiKey = process.env.OPENAI_API_KEY || '';
     if (!apiKey) {
-      return res.status(500).json({ error: 'ElevenLabs API key is missing' });
-    }
-
-    if (!voiceId) {
-      return res.status(500).json({ error: 'ElevenLabs voice ID is missing' });
+      return res.status(500).json({ error: 'OpenAI API key is missing' });
     }
 
     const text = String(req.body?.text || '').trim();
@@ -318,28 +312,24 @@ app.post('/api/tts', async (req, res) => {
       return res.status(400).json({ error: 'text is required' });
     }
 
-    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+    const response = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'xi-api-key': apiKey,
-        'accept': 'audio/mpeg'
       },
       body: JSON.stringify({
-        text: cleanText,
-        model_id: 'eleven_turbo_v2_5',
-        voice_settings: {
-          stability: 0.4,
-          similarity_boost: 0.85
-        },
+        model: 'tts-1',
+        voice: 'nova',
+        input: cleanText,
       })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[TTS] ElevenLabs API Error: Status ${response.status}, Body: ${errorText}`);
+      console.error(`[TTS] OpenAI API Error: Status ${response.status}, Body: ${errorText}`);
       return res.status(response.status).json({
-        error: errorText || 'ElevenLabs request failed'
+        error: errorText || 'OpenAI request failed'
       });
     }
 
@@ -347,12 +337,8 @@ app.post('/api/tts', async (req, res) => {
     const audioContent = Buffer.from(arrayBuffer).toString('base64');
     res.json({ audioContent });
   } catch (error) {
-    console.error('[TTS] Critical Error:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data
-    });
-    res.status(500).json({ error: error.message || 'ElevenLabs request failed' });
+    console.error('[TTS] Critical Error:', error);
+    res.status(500).json({ error: error.message || 'OpenAI request failed' });
   }
 });
 
@@ -686,6 +672,7 @@ process.on('unhandledRejection', (reason, promise) => {
 app.listen(PORT, () => {
   console.log(`Aria backend running on http://localhost:${PORT}`);
   console.log(`SerpApi key loaded: ${process.env.SERPAPI_API_KEY ? 'yes' : 'no'}`);
+  console.log(`OpenAI API key loaded: ${process.env.OPENAI_API_KEY ? 'yes' : 'no'}`);
 }).on('error', (err) => {
   console.error('Server listen error:', err);
 });
