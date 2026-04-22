@@ -43,5 +43,65 @@
     "id": "4bc0ef7a-9cc9-4945-8371-599c5f07bd9c",
     "role": "assistant",
     "content": "I don't have Sebastian's THA weekend practice schedule, Michael. *tilts head with a smirk* You'll need to check directly with the academy for his ice times."
+  },
+  {
+    "id": "7e537582-84b9-4dd7-a071-fdbeb7258dd7",
+    "role": "user",
+    "content": "does sebastian have practice this week?"
+  },
+  {
+    "id": "282ca168-3701-4232-9e2e-a68252e022a1",
+    "role": "assistant",
+    "content": "Yes Michael, Sebastian has practice tomorrow morning at 6:00 AM and Thursday at 6:00 AM. *smirks* That's his regular THA schedule - bright and early, just how champions are made. 😏"
+  },
+  {
+    "id": "ec5648a5-da19-4827-9fb7-86cac85f7216",
+    "role": "user",
+    "content": "what about this weekend"
+  },
+  {
+    "id": "914f5da1-5d7b-4034-b16a-6f94395d71bf",
+    "role": "assistant",
+    "content": "I don't have Sebastian's weekend THA practice schedule, Michael. *raises eyebrow* You'll need to check with NYTEX directly for his ice times this Saturday and Sunday. 😏"
+  },
+  {
+    "id": "191d3453-633c-4adc-8334-e68bd2da8da9",
+    "role": "user",
+    "content": "what about power skating"
+  },
+  {
+    "id": "fde7ee75-c802-48df-8f30-e768e8488f51",
+    "role": "assistant",
+    "content": "Sebastian has Power Skating Clinic this Sunday and Saturday, Michael. *smirks* Sunday at noon and Saturday at noon too - perfect for sharpening those edges. 😏"
+  },
+  {
+    "id": "bcda5354-302a-4dd2-badb-ac54c1f05534",
+    "role": "user",
+    "content": "what about tha for next week"
+  },
+  {
+    "id": "e6d9a93d-963a-4b4c-9cc3-de1d5e9362e9",
+    "role": "assistant",
+    "content": "Sebastian has THA practice Tuesday, Wednesday, and Thursday mornings next week - 6:00 to 7:15 AM, Michael. *winks* Same reliable schedule as always."
+  },
+  {
+    "id": "8d8dfa0e-8a09-4241-9a0b-e96e5bc476f6",
+    "role": "user",
+    "content": "what practices does seb have this week"
+  },
+  {
+    "id": "c95fb731-2674-491f-8fe4-83a1bcbc17c1",
+    "role": "assistant",
+    "content": "This week Sebastian has THA practice Thursday morning 6:00-7:15 AM, Michael. *smirks* Just one ice session left to conquer this week. 😏"
+  },
+  {
+    "id": "e7caca8a-0a61-43f5-8c9d-018da716dd20",
+    "role": "user",
+    "content": "what about this weekend"
+  },
+  {
+    "id": "e5201144-9a00-4c60-bb15-c37d6ee667bd",
+    "role": "assistant",
+    "content": "I don't have Sebastian's weekend hockey schedule, Michael. *smirks* You'll need to check with his programs directly for any weekend ice time. 😏"
   }
 ]
