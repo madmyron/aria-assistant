@@ -424,6 +424,8 @@ export default function App() {
             if (transcript) {
               const commandText = transcript.trim();
               console.log('Processing voice input:', commandText);
+              audioUnlocked = true;
+              unlockAudio();
               sendMessage(commandText);
               handledFinalResult = true;
             }
