@@ -304,7 +304,8 @@ function detectIntent(text) {
   }
   const intents = {
       weather: /weather|temp|forecast|hot|cold|outside/.test(lower),
-      sports: /score|game|cowboys|mavs|stars|rangers|mets|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|coyotes|nfl|nba|mlb|nhl|football|basketball|hockey/.test(lower),
+      sports: /score|game|cowboys|mavs|stars|rangers|mets|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|coyotes|mammoth|kraken|nfl|nba|mlb|nhl|football|basketball|hockey/.test(lower),
+      nextGame: /next game|playing next|next.*play|when.*play|when.*game|schedule|upcoming game/.test(lower) && /stars|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|mammoth|kraken|rangers|hurricanes|canes/.test(lower),
       familyInfo: /\bsandra(?:'s)?\b|\bpeyton(?:'s)?\b/.test(lower),
       hockeySchedule: /hockey practice|hockey schedule|\btha\b|\bthai\b|sebastian(?:'s)? practice|nytex schedule|practice schedule|skating clinic|power skating|checking clinic/.test(lower),
       sms: /\btext\b|send a message|\bsms\b/.test(lower),
@@ -754,7 +755,39 @@ export default function App() {
       }
     }
 
-    if (intents.sports) {
+    if (intents.nextGame) {
+      try {
+        const teamKeywords = [
+          ['dallas stars','stars'], ['boston bruins','bruins'], ['buffalo sabres','sabres'],
+          ['calgary flames','flames'], ['carolina hurricanes','hurricanes','canes'],
+          ['chicago blackhawks','blackhawks','hawks'], ['colorado avalanche','avalanche','avs'],
+          ['columbus blue jackets','blue jackets'], ['detroit red wings','red wings'],
+          ['edmonton oilers','oilers'], ['florida panthers','panthers'],
+          ['los angeles kings','la kings','kings'], ['minnesota wild','wild'],
+          ['montreal canadiens','canadiens','habs'], ['nashville predators','predators','preds'],
+          ['new jersey devils','devils'], ['new york islanders','islanders'],
+          ['new york rangers','rangers'], ['ottawa senators','senators','sens'],
+          ['philadelphia flyers','flyers'], ['pittsburgh penguins','penguins','pens'],
+          ['san jose sharks','sharks'], ['seattle kraken','kraken'],
+          ['st. louis blues','blues'], ['tampa bay lightning','lightning','bolts'],
+          ['toronto maple leafs','maple leafs','leafs'], ['utah mammoth','mammoth'],
+          ['vancouver canucks','canucks'], ['vegas golden knights','golden knights','knights'],
+          ['washington capitals','capitals','caps'], ['winnipeg jets','jets'],
+          ['anaheim ducks','ducks'],
+        ];
+        let teamName = null;
+        for (const aliases of teamKeywords) {
+          if (aliases.some((a) => lower.includes(a))) { teamName = aliases[0]; break; }
+        }
+        if (teamName) {
+          const ng = await fetchJson(`/api/sports/next-game?team=${encodeURIComponent(teamName)}`);
+          const homeAway = ng.home ? 'vs' : '@';
+          blocks.push(formatContextBlock("Next Game", `${ng.team} ${homeAway} ${ng.opponent} on ${ng.date} at ${ng.venue}`));
+        }
+      } catch (e) {
+        console.error("Next game context failed:", e);
+      }
+    } else if (intents.sports) {
       try {
         const sports = await fetchJson(`/api/sports?query=${encodeURIComponent(text)}`);
         blocks.push(formatContextBlock("Sports", (sports.games || []).join(" | ") || "No games found."));
