@@ -3,7 +3,7 @@ const cheerio = require('cheerio');
 
 const ESPN_STARS_URL = 'https://www.espn.com/nhl/team/schedule/_/name/dal';
 
-async function getNextStarsGame() {
+async function fetchStarsSchedule() {
   try {
     const response = await fetch(ESPN_STARS_URL, {
       headers: {
@@ -41,30 +41,23 @@ async function getNextStarsGame() {
 
       if (!dateText || dateText.toLowerCase() === 'date') continue;
 
-      // Try to parse the date from ESPN format (e.g., "Thu, Oct 10")
       const parsedDate = parseDateText(dateText, now);
       if (!parsedDate) continue;
 
-      // Only look at future games
       if (parsedDate < now) continue;
 
-      // Extract opponent
       let opponent = opponentCell.find('.Table__Team').text().trim();
       if (!opponent) {
         opponent = opponentCell.text().trim();
       }
 
-      // Extract time or result
       const timeOrResult = resultOrTimeCell.text().trim();
 
-      // Check if this is a past game (has a score rather than a time)
       const hasScore = /^\d+-\d+/.test(timeOrResult) || /^[WL]\s+\d+-\d+/.test(timeOrResult);
       if (hasScore) continue;
 
-      // Extract venue if available
       const venueText = cells.length > 3 ? $(cells[3]).text().trim() : '';
 
-      // Determine home/away
       const opponentRaw = opponentCell.text().trim();
       const isAway = opponentRaw.startsWith('@') || opponentCell.find('.Schedule__at').length > 0;
 
@@ -74,6 +67,7 @@ async function getNextStarsGame() {
         opponent: cleanOpponentName(opponent || opponentRaw),
         venue: venueText || (isAway ? 'Away' : 'American Airlines Center'),
         isHome: !isAway,
+        found: true,
       };
 
       break;
@@ -86,7 +80,11 @@ async function getNextStarsGame() {
 
     if (!nextGame) {
       return {
-        error: 'No upcoming game found',
+        date: null,
+        time: null,
+        opponent: null,
+        venue: null,
+        found: false,
         source: ESPN_STARS_URL,
         fetchedAt: new Date().toISOString(),
       };
@@ -101,6 +99,11 @@ async function getNextStarsGame() {
     console.error('[espnStarsSchedule] Error fetching schedule:', error.message);
 
     return {
+      date: null,
+      time: null,
+      opponent: null,
+      venue: null,
+      found: false,
       error: error.message,
       source: ESPN_STARS_URL,
       fetchedAt: new Date().toISOString(),
@@ -108,10 +111,13 @@ async function getNextStarsGame() {
   }
 }
 
+async function getNextStarsGame() {
+  return fetchStarsSchedule();
+}
+
 function parseAlternativeStructure($, now) {
   let nextGame = null;
 
-  // Try to find schedule items in a different ESPN layout
   $('.ScheduleTables tbody tr, .schedule__table tbody tr').each((i, row) => {
     if (nextGame) return;
 
@@ -139,6 +145,7 @@ function parseAlternativeStructure($, now) {
       opponent: cleanOpponentName(opponentRaw),
       venue: venueRaw || (isAway ? 'Away' : 'American Airlines Center'),
       isHome: !isAway,
+      found: true,
     };
   });
 
@@ -148,13 +155,11 @@ function parseAlternativeStructure($, now) {
 function parseDateText(dateText, referenceDate) {
   if (!dateText) return null;
 
-  // Clean up the date text
   const cleaned = dateText.replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun),?\s*/i, '').trim();
 
   const currentYear = referenceDate.getFullYear();
-  const currentMonth = referenceDate.getMonth(); // 0-indexed
+  const currentMonth = referenceDate.getMonth();
 
-  // Try parsing "Oct 10", "Nov 5", etc.
   const monthDayMatch = cleaned.match(/^([A-Za-z]+)\s+(\d{1,2})$/);
   if (monthDayMatch) {
     const monthStr = monthDayMatch[1];
@@ -163,9 +168,7 @@ function parseDateText(dateText, referenceDate) {
 
     if (monthIndex === -1) return null;
 
-    // Determine correct year (NHL season spans Oct-June, so handle year boundary)
     let year = currentYear;
-    // If we're in the fall (Oct-Dec) and the month is Jan-June, it's next year
     if (currentMonth >= 9 && monthIndex <= 5) {
       year = currentYear + 1;
     }
@@ -174,7 +177,6 @@ function parseDateText(dateText, referenceDate) {
     return isNaN(date.getTime()) ? null : date;
   }
 
-  // Try full date formats
   const fullDate = new Date(cleaned);
   if (!isNaN(fullDate.getTime())) {
     return fullDate;
@@ -196,13 +198,11 @@ function parseMonthName(monthStr) {
 function extractTime(timeText) {
   if (!timeText) return 'TBD';
 
-  // Match patterns like "7:00 PM ET", "7:30 PM", "19:00"
   const timeMatch = timeText.match(/(\d{1,2}:\d{2}\s*(?:AM|PM)?(?:\s*ET|CT|MT|PT)?)/i);
   if (timeMatch) {
     return timeMatch[1].trim();
   }
 
-  // If it just says TBD or similar
   if (/tbd|tba/i.test(timeText)) return 'TBD';
 
   return timeText || 'TBD';
@@ -211,16 +211,13 @@ function extractTime(timeText) {
 function cleanOpponentName(opponentText) {
   if (!opponentText) return 'Unknown';
 
-  // Remove @ symbol and leading/trailing whitespace
   let cleaned = opponentText.replace(/^[@\s]+/, '').trim();
 
-  // Remove record in parentheses like "(15-10-3)"
   cleaned = cleaned.replace(/\(\d+-\d+-?\d*\)/, '').trim();
 
-  // Remove extra whitespace
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
 
   return cleaned || 'Unknown';
 }
 
-module.exports = { getNextStarsGame };
+module.exports = { fetchStarsSchedule, getNextStarsGame };
