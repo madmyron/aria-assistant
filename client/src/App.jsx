@@ -305,7 +305,10 @@ function detectIntent(text) {
   const intents = {
       weather: /weather|temp|forecast|hot|cold|outside/.test(lower),
       sports: /score|game|cowboys|mavs|stars|rangers|mets|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|coyotes|mammoth|kraken|nfl|nba|mlb|nhl|football|basketball|hockey/.test(lower),
-      nextGame: /next game|playing next|next.*play|when.*play|when.*game|schedule|upcoming game/.test(lower) && /stars|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|mammoth|kraken|rangers|hurricanes|canes/.test(lower),
+      nextGame: /next game|playing next|next.*play|when.*play|when.*game|schedule|upcoming game/.test(lower) && /stars|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|mammoth|kraken|rangers|canes/.test(lower),
+      standings: /standing|standings|rank|ranked|first place|last place|top of|bottom of|division leader|points/.test(lower) && /nhl|hockey|division|atlantic|metropolitan|central|pacific/.test(lower),
+      teamRecord: /record|wins|losses|how.*doing|how.*they doing/.test(lower) && /stars|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|mammoth|kraken|rangers|canes/.test(lower),
+      lastGames: /last.*game|last.*\d|recent game|how.*been playing|recent.*result|last.*five|last.*5/.test(lower) && /stars|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|mammoth|kraken|rangers|canes/.test(lower),
       familyInfo: /\bsandra(?:'s)?\b|\bpeyton(?:'s)?\b/.test(lower),
       hockeySchedule: /hockey practice|hockey schedule|\btha\b|\bthai\b|sebastian(?:'s)? practice|nytex schedule|practice schedule|skating clinic|power skating|checking clinic/.test(lower),
       sms: /\btext\b|send a message|\bsms\b/.test(lower),
@@ -755,30 +758,34 @@ export default function App() {
       }
     }
 
+    const NHL_TEAM_ALIASES = [
+      ['dallas stars','stars'], ['boston bruins','bruins'], ['buffalo sabres','sabres'],
+      ['calgary flames','flames'], ['carolina hurricanes','hurricanes','canes'],
+      ['chicago blackhawks','blackhawks','hawks'], ['colorado avalanche','avalanche','avs'],
+      ['columbus blue jackets','blue jackets'], ['detroit red wings','red wings'],
+      ['edmonton oilers','oilers'], ['florida panthers','panthers'],
+      ['los angeles kings','la kings','kings'], ['minnesota wild','wild'],
+      ['montreal canadiens','canadiens','habs'], ['nashville predators','predators','preds'],
+      ['new jersey devils','devils'], ['new york islanders','islanders'],
+      ['new york rangers','rangers'], ['ottawa senators','senators','sens'],
+      ['philadelphia flyers','flyers'], ['pittsburgh penguins','penguins','pens'],
+      ['san jose sharks','sharks'], ['seattle kraken','kraken'],
+      ['st. louis blues','blues'], ['tampa bay lightning','lightning','bolts'],
+      ['toronto maple leafs','maple leafs','leafs'], ['utah mammoth','mammoth'],
+      ['vancouver canucks','canucks'], ['vegas golden knights','golden knights','knights'],
+      ['washington capitals','capitals','caps'], ['winnipeg jets','jets'],
+      ['anaheim ducks','ducks'],
+    ];
+    const detectNHLTeam = (q) => {
+      for (const aliases of NHL_TEAM_ALIASES) {
+        if (aliases.some((a) => q.includes(a))) return aliases[0];
+      }
+      return null;
+    };
+
     if (intents.nextGame) {
       try {
-        const teamKeywords = [
-          ['dallas stars','stars'], ['boston bruins','bruins'], ['buffalo sabres','sabres'],
-          ['calgary flames','flames'], ['carolina hurricanes','hurricanes','canes'],
-          ['chicago blackhawks','blackhawks','hawks'], ['colorado avalanche','avalanche','avs'],
-          ['columbus blue jackets','blue jackets'], ['detroit red wings','red wings'],
-          ['edmonton oilers','oilers'], ['florida panthers','panthers'],
-          ['los angeles kings','la kings','kings'], ['minnesota wild','wild'],
-          ['montreal canadiens','canadiens','habs'], ['nashville predators','predators','preds'],
-          ['new jersey devils','devils'], ['new york islanders','islanders'],
-          ['new york rangers','rangers'], ['ottawa senators','senators','sens'],
-          ['philadelphia flyers','flyers'], ['pittsburgh penguins','penguins','pens'],
-          ['san jose sharks','sharks'], ['seattle kraken','kraken'],
-          ['st. louis blues','blues'], ['tampa bay lightning','lightning','bolts'],
-          ['toronto maple leafs','maple leafs','leafs'], ['utah mammoth','mammoth'],
-          ['vancouver canucks','canucks'], ['vegas golden knights','golden knights','knights'],
-          ['washington capitals','capitals','caps'], ['winnipeg jets','jets'],
-          ['anaheim ducks','ducks'],
-        ];
-        let teamName = null;
-        for (const aliases of teamKeywords) {
-          if (aliases.some((a) => lower.includes(a))) { teamName = aliases[0]; break; }
-        }
+        const teamName = detectNHLTeam(lower);
         if (teamName) {
           const ng = await fetchJson(`/api/sports/next-game?team=${encodeURIComponent(teamName)}`);
           const homeAway = ng.home ? 'vs' : '@';
@@ -787,7 +794,43 @@ export default function App() {
       } catch (e) {
         console.error("Next game context failed:", e);
       }
-    } else if (intents.sports) {
+    }
+
+    if (intents.teamRecord) {
+      try {
+        const teamName = detectNHLTeam(lower);
+        if (teamName) {
+          const rec = await fetchJson(`/api/sports/team-record?team=${encodeURIComponent(teamName)}`);
+          blocks.push(formatContextBlock("Team Record", `${rec.team}: ${rec.wins}-${rec.losses}-${rec.otLosses} (${rec.points} pts), ${rec.division} Division rank #${rec.divisionRank}`));
+        }
+      } catch (e) {
+        console.error("Team record context failed:", e);
+      }
+    }
+
+    if (intents.lastGames) {
+      try {
+        const teamName = detectNHLTeam(lower);
+        if (teamName) {
+          const lg = await fetchJson(`/api/sports/last-games?team=${encodeURIComponent(teamName)}`);
+          blocks.push(formatContextBlock("Last Games", (lg.lastGames || []).join(' | ') || 'No recent games'));
+        }
+      } catch (e) {
+        console.error("Last games context failed:", e);
+      }
+    }
+
+    if (intents.standings) {
+      try {
+        const st = await fetchJson('/api/sports/standings');
+        const top5 = (st.standings || []).sort((a, b) => b.points - a.points).slice(0, 5);
+        blocks.push(formatContextBlock("NHL Standings (top 5)", top5.map((t) => `${t.team} ${t.wins}-${t.losses}-${t.otLosses} (${t.points}pts)`).join(', ')));
+      } catch (e) {
+        console.error("Standings context failed:", e);
+      }
+    }
+
+    if (!intents.nextGame && !intents.teamRecord && !intents.lastGames && !intents.standings && intents.sports) {
       try {
         const sports = await fetchJson(`/api/sports?query=${encodeURIComponent(text)}`);
         blocks.push(formatContextBlock("Sports", (sports.games || []).join(" | ") || "No games found."));

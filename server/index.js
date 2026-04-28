@@ -787,6 +787,80 @@ app.get('/api/sports/next-game', async (req, res) => {
   }
 });
 
+app.get('/api/sports/standings', async (req, res) => {
+  try {
+    const r = await fetch('https://api-web.nhle.com/v1/standings/now');
+    if (!r.ok) throw new Error('NHL standings API error');
+    const data = await r.json();
+    const teams = (data.standings || []).map((t) => ({
+      team: t.teamName?.default || t.teamAbbrev?.default,
+      wins: t.wins,
+      losses: t.losses,
+      otLosses: t.otLosses,
+      points: t.points,
+      division: t.divisionName,
+    }));
+    return res.json({ standings: teams });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/sports/last-games', async (req, res) => {
+  try {
+    const teamQuery = (req.query.team || '').toLowerCase().trim();
+    const abbr = NHL_NEXT_GAME_TEAMS[teamQuery];
+    if (!abbr) return res.status(404).json({ error: `NHL team not found: ${req.query.team}` });
+
+    const r = await fetch(`https://api-web.nhle.com/v1/club-schedule-season/${abbr}/now`);
+    if (!r.ok) throw new Error(`NHL API error for ${abbr}`);
+    const sched = await r.json();
+
+    const finished = (sched.games || [])
+      .filter((g) => g.gameState === 'OFF' || g.gameState === 'FINAL')
+      .slice(-5);
+
+    const games = finished.map((g) => {
+      const isHome = g.homeTeam?.abbrev === abbr;
+      const us = isHome ? g.homeTeam : g.awayTeam;
+      const them = isHome ? g.awayTeam : g.homeTeam;
+      const won = (us.score || 0) > (them.score || 0);
+      return `${won ? 'W' : 'L'} ${us.score}-${them.score} vs ${them.commonName?.default || them.abbrev} (${g.gameDate})`;
+    });
+
+    return res.json({ team: abbr, lastGames: games });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/sports/team-record', async (req, res) => {
+  try {
+    const teamQuery = (req.query.team || '').toLowerCase().trim();
+    const abbr = NHL_NEXT_GAME_TEAMS[teamQuery];
+    if (!abbr) return res.status(404).json({ error: `NHL team not found: ${req.query.team}` });
+
+    const r = await fetch('https://api-web.nhle.com/v1/standings/now');
+    if (!r.ok) throw new Error('NHL standings API error');
+    const data = await r.json();
+
+    const team = (data.standings || []).find((t) => t.teamAbbrev?.default === abbr);
+    if (!team) return res.status(404).json({ error: `Team ${abbr} not found in standings` });
+
+    return res.json({
+      team: team.teamName?.default,
+      wins: team.wins,
+      losses: team.losses,
+      otLosses: team.otLosses,
+      points: team.points,
+      divisionRank: team.divisionSequence,
+      division: team.divisionName,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 process.on('exit', (code) => {
   console.log(`Process exiting with code: ${code}`);
 });
