@@ -719,6 +719,74 @@ app.delete('/api/memory', (_req, res) => {
   res.json({ success: true });
 });
 
+const NHL_NEXT_GAME_TEAMS = {
+  'anaheim ducks': 'ANA', 'ducks': 'ANA',
+  'boston bruins': 'BOS', 'bruins': 'BOS',
+  'buffalo sabres': 'BUF', 'sabres': 'BUF',
+  'calgary flames': 'CGY', 'flames': 'CGY',
+  'carolina hurricanes': 'CAR', 'hurricanes': 'CAR', 'canes': 'CAR',
+  'chicago blackhawks': 'CHI', 'blackhawks': 'CHI', 'hawks': 'CHI',
+  'colorado avalanche': 'COL', 'avalanche': 'COL', 'avs': 'COL',
+  'columbus blue jackets': 'CBJ', 'blue jackets': 'CBJ',
+  'dallas stars': 'DAL', 'stars': 'DAL',
+  'detroit red wings': 'DET', 'red wings': 'DET',
+  'edmonton oilers': 'EDM', 'oilers': 'EDM',
+  'florida panthers': 'FLA', 'panthers': 'FLA',
+  'los angeles kings': 'LAK', 'la kings': 'LAK', 'kings': 'LAK',
+  'minnesota wild': 'MIN', 'wild': 'MIN',
+  'montreal canadiens': 'MTL', 'canadiens': 'MTL', 'habs': 'MTL',
+  'nashville predators': 'NSH', 'predators': 'NSH', 'preds': 'NSH',
+  'new jersey devils': 'NJD', 'devils': 'NJD',
+  'new york islanders': 'NYI', 'islanders': 'NYI',
+  'new york rangers': 'NYR', 'rangers': 'NYR',
+  'ottawa senators': 'OTT', 'senators': 'OTT', 'sens': 'OTT',
+  'philadelphia flyers': 'PHI', 'flyers': 'PHI',
+  'pittsburgh penguins': 'PIT', 'penguins': 'PIT', 'pens': 'PIT',
+  'san jose sharks': 'SJS', 'sharks': 'SJS',
+  'seattle kraken': 'SEA', 'kraken': 'SEA',
+  'st. louis blues': 'STL', 'st louis blues': 'STL', 'blues': 'STL',
+  'tampa bay lightning': 'TBL', 'lightning': 'TBL', 'bolts': 'TBL',
+  'toronto maple leafs': 'TOR', 'maple leafs': 'TOR', 'leafs': 'TOR',
+  'utah mammoth': 'UTA', 'mammoth': 'UTA', 'utah hockey club': 'UTA',
+  'vancouver canucks': 'VAN', 'canucks': 'VAN',
+  'vegas golden knights': 'VGK', 'golden knights': 'VGK', 'knights': 'VGK',
+  'washington capitals': 'WSH', 'capitals': 'WSH', 'caps': 'WSH',
+  'winnipeg jets': 'WPG', 'jets': 'WPG',
+};
+
+app.get('/api/sports/next-game', async (req, res) => {
+  try {
+    const teamQuery = (req.query.team || '').toLowerCase().trim();
+    const abbr = NHL_NEXT_GAME_TEAMS[teamQuery];
+    if (!abbr) return res.status(404).json({ error: `NHL team not found: ${req.query.team}` });
+
+    const schedRes = await fetch(`https://api-web.nhle.com/v1/club-schedule-season/${abbr}/now`);
+    if (!schedRes.ok) throw new Error(`NHL API error for ${abbr}`);
+    const sched = await schedRes.json();
+
+    const now = new Date();
+    const next = (sched.games || []).find((g) => new Date(g.gameDate) >= now && g.gameState !== 'OFF' && g.gameState !== 'FINAL');
+    if (!next) return res.status(404).json({ error: `No upcoming games found for ${teamQuery}` });
+
+    const isHome = next.homeTeam?.abbrev === abbr;
+    const opponent = isHome ? next.awayTeam?.commonName?.default || next.awayTeam?.abbrev : next.homeTeam?.commonName?.default || next.homeTeam?.abbrev;
+    const venue = next.venue?.default || (isHome ? next.homeTeam?.placeName?.default + ' arena' : null) || 'TBD';
+    const gameDate = new Date(next.gameDate);
+    const dateStr = gameDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+    return res.json({
+      sport: 'NHL',
+      team: next.homeTeam?.abbrev === abbr ? next.homeTeam?.commonName?.default : next.awayTeam?.commonName?.default,
+      opponent,
+      date: dateStr,
+      venue,
+      home: isHome,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'Failed to fetch next game' });
+  }
+});
+
 process.on('exit', (code) => {
   console.log(`Process exiting with code: ${code}`);
 });

@@ -28,7 +28,7 @@ const NHL_TEAMS = [
   { id: 29, abbr: "CBJ", name: "Columbus Blue Jackets" },
   { id: 30, abbr: "MIN", name: "Minnesota Wild" },
   { id: 52, abbr: "WPG", name: "Winnipeg Jets" },
-  { id: 53, abbr: "ARI", name: "Utah Hockey Club" },
+  { id: 53, abbr: "UTA", name: "Utah Mammoth" },
   { id: 54, abbr: "VGK", name: "Vegas Golden Knights" },
   { id: 55, abbr: "SEA", name: "Seattle Kraken" },
 ];
