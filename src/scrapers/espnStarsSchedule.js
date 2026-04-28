@@ -1,11 +1,11 @@
-const axios = require('axios');
+const fetch = require('node-fetch');
 const cheerio = require('cheerio');
 
-const ESPN_STARS_URL = 'https://www.espn.com/nhl/team/schedule/_/name/dal/dallas-stars';
+const ESPN_STARS_URL = 'https://www.espn.com/nhl/team/schedule/_/name/dal';
 
 async function getNextStarsGame() {
   try {
-    const response = await axios.get(ESPN_STARS_URL, {
+    const response = await fetch(ESPN_STARS_URL, {
       headers: {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -19,7 +19,12 @@ async function getNextStarsGame() {
       timeout: 15000,
     });
 
-    const $ = cheerio.load(response.data);
+    if (!response.ok) {
+      throw new Error(`HTTP error fetching ESPN schedule: ${response.status} ${response.statusText}`);
+    }
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
     const now = new Date();
     let nextGame = null;
 
@@ -51,36 +56,24 @@ async function getNextStarsGame() {
 
       // Extract time or result
       const timeOrResult = resultOrTimeCell.text().trim();
-      const isUpcoming = /^\d{1,2}:\d{2}/.test(timeOrResult) || /^[A-Z]+\s+\d{1,2}:\d{2}/.test(timeOrResult);
 
-      // Check if this is a future game (has a time rather than a score)
+      // Check if this is a past game (has a score rather than a time)
       const hasScore = /^\d+-\d+/.test(timeOrResult) || /^[WL]\s+\d+-\d+/.test(timeOrResult);
       if (hasScore) continue;
 
       // Extract venue if available
-      let venue = '';
-      const venueCell = cells.length > 3 ? $(cells[3]).text().trim() : '';
-      if (venueCell) {
-        venue = venueCell;
-      }
+      const venueText = cells.length > 3 ? $(cells[3]).text().trim() : '';
 
       // Determine home/away
-      const opponentText = opponentCell.text().trim();
-      const isAway = opponentText.startsWith('@') || opponentCell.find('.Schedule__at').length > 0;
+      const opponentRaw = opponentCell.text().trim();
+      const isAway = opponentRaw.startsWith('@') || opponentCell.find('.Schedule__at').length > 0;
 
       nextGame = {
         date: parsedDate.toISOString(),
-        dateDisplay: formatDisplayDate(parsedDate),
         time: extractTime(timeOrResult),
-        opponent: cleanOpponentName(opponent || opponentText),
-        venue: venue || (isAway ? 'Away' : 'American Airlines Center'),
-        isHomeGame: !isAway,
-        raw: {
-          dateText,
-          opponentText: opponent || opponentText,
-          timeText: timeOrResult,
-          venueText: venueCell,
-        },
+        opponent: cleanOpponentName(opponent || opponentRaw),
+        venue: venueText || (isAway ? 'Away' : 'American Airlines Center'),
+        isHome: !isAway,
       };
 
       break;
@@ -88,7 +81,7 @@ async function getNextStarsGame() {
 
     // Fallback: try alternative ESPN schedule structure
     if (!nextGame) {
-      nextGame = await parseAlternativeStructure($, now);
+      nextGame = parseAlternativeStructure($, now);
     }
 
     if (!nextGame) {
@@ -142,17 +135,10 @@ function parseAlternativeStructure($, now) {
 
     nextGame = {
       date: parsedDate.toISOString(),
-      dateDisplay: formatDisplayDate(parsedDate),
       time: extractTime(timeRaw),
       opponent: cleanOpponentName(opponentRaw),
       venue: venueRaw || (isAway ? 'Away' : 'American Airlines Center'),
-      isHomeGame: !isAway,
-      raw: {
-        dateText,
-        opponentText: opponentRaw,
-        timeText: timeRaw,
-        venueText: venueRaw,
-      },
+      isHome: !isAway,
     };
   });
 
@@ -183,8 +169,6 @@ function parseDateText(dateText, referenceDate) {
     if (currentMonth >= 9 && monthIndex <= 5) {
       year = currentYear + 1;
     }
-    // If we're in the spring (Jan-June) and the month is Oct-Dec, it was last year
-    // (already passed, so it will be filtered by the future check)
 
     const date = new Date(year, monthIndex, day);
     return isNaN(date.getTime()) ? null : date;
@@ -237,20 +221,6 @@ function cleanOpponentName(opponentText) {
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
 
   return cleaned || 'Unknown';
-}
-
-function formatDisplayDate(date) {
-  if (!date || isNaN(date.getTime())) return 'Unknown Date';
-
-  const options = {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    timeZone: 'America/Chicago', // Dallas is Central Time
-  };
-
-  return date.toLocaleDateString('en-US', options);
 }
 
 module.exports = { getNextStarsGame };
