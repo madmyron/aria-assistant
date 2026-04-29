@@ -156,6 +156,28 @@ router.get('/nfl', async (_req, res) => {
   }
 });
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// ESPN team schedule endpoints only return past games; find next game by walking
+// forward through the scoreboard day-by-day until we find the team.
+async function espnFindNextGame(sport, league, abbr, maxDays = 14) {
+  const now = new Date();
+  for (let i = 0; i <= maxDays; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + i);
+    const dateStr = d.toISOString().slice(0, 10).replace(/-/g, '');
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard?dates=${dateStr}`);
+    if (!r.ok) continue;
+    const data = await r.json();
+    const game = (data.events || []).find(e => {
+      const state = e.competitions?.[0]?.status?.type?.state;
+      return (state === 'pre' || state === 'in') && e.competitions?.[0]?.competitors?.some(c => c.team?.abbreviation === abbr);
+    });
+    if (game) return game;
+  }
+  return null;
+}
+
 // ─── NHL routes ───────────────────────────────────────────────────────────────
 
 router.get('/next-game', async (req, res) => {
@@ -259,11 +281,7 @@ router.get('/nba/next-game', async (req, res) => {
     const teamQuery = (req.query.team || '').toLowerCase().trim();
     const abbr = NBA_TEAMS[teamQuery];
     if (!abbr) return res.status(404).json({ error: `NBA team not found: ${req.query.team}` });
-    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${abbr}/schedule`);
-    if (!r.ok) throw new Error('ESPN NBA schedule error');
-    const data = await r.json();
-    const now = new Date();
-    const next = (data.events || []).find(e => new Date(e.date) > now && e.competitions?.[0]?.status?.type?.state === 'pre');
+    const next = await espnFindNextGame('basketball', 'nba', abbr);
     if (!next) return res.status(404).json({ error: `No upcoming NBA games for ${teamQuery}` });
     const comp = next.competitions?.[0];
     const home = comp?.competitors?.find(c => c.homeAway === 'home');
@@ -406,11 +424,7 @@ router.get('/nfl/next-game', async (req, res) => {
     const teamQuery = (req.query.team || '').toLowerCase().trim();
     const abbr = NFL_TEAMS[teamQuery];
     if (!abbr) return res.status(404).json({ error: `NFL team not found: ${req.query.team}` });
-    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${abbr}/schedule`);
-    if (!r.ok) throw new Error('ESPN NFL schedule error');
-    const data = await r.json();
-    const now = new Date();
-    const next = (data.events || []).find(e => new Date(e.date) > now && e.competitions?.[0]?.status?.type?.state === 'pre');
+    const next = await espnFindNextGame('football', 'nfl', abbr);
     if (!next) return res.status(404).json({ error: `No upcoming NFL games for ${teamQuery}` });
     const comp = next.competitions?.[0];
     const home = comp?.competitors?.find(c => c.homeAway === 'home');
@@ -551,11 +565,7 @@ router.get('/mlb/next-game', async (req, res) => {
     const teamQuery = (req.query.team || '').toLowerCase().trim();
     const abbr = MLB_TEAMS[teamQuery];
     if (!abbr) return res.status(404).json({ error: `MLB team not found: ${req.query.team}` });
-    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/teams/${abbr}/schedule`);
-    if (!r.ok) throw new Error('ESPN MLB schedule error');
-    const data = await r.json();
-    const now = new Date();
-    const next = (data.events || []).find(e => new Date(e.date) > now && e.competitions?.[0]?.status?.type?.state === 'pre');
+    const next = await espnFindNextGame('baseball', 'mlb', abbr);
     if (!next) return res.status(404).json({ error: `No upcoming MLB games for ${teamQuery}` });
     const comp = next.competitions?.[0];
     const home = comp?.competitors?.find(c => c.homeAway === 'home');
