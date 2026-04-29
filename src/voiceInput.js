@@ -1,107 +1,75 @@
-src/voiceInput.js
-
 import { speakResponse } from './aria.js';
 
-const NHL_TEAMS = [
-  'Avalanche','Hurricanes','Red Wings','Panthers','Kings','Oilers','Flames',
-  'Canucks','Stars','Wild','Predators','Blues','Maple Leafs','Lightning',
-  'Senators','Flyers','Penguins','Rangers','Islanders','Devils','Capitals',
-  'Bruins','Sabres','Kraken','Knights','Ducks','Sharks','Coyotes'
+const API_BASE = window.location.hostname === 'localhost'
+  ? 'http://localhost:3001'
+  : 'https://aria-assistant-production-6730.up.railway.app';
+
+const NHL_TEAM_ALIASES = [
+  ['dallas stars', 'stars'],
+  ['boston bruins', 'bruins'],
+  ['buffalo sabres', 'sabres'],
+  ['calgary flames', 'flames'],
+  ['carolina hurricanes', 'hurricanes', 'canes'],
+  ['chicago blackhawks', 'blackhawks', 'hawks'],
+  ['colorado avalanche', 'avalanche', 'avs'],
+  ['columbus blue jackets', 'blue jackets'],
+  ['detroit red wings', 'red wings'],
+  ['edmonton oilers', 'oilers'],
+  ['florida panthers', 'panthers'],
+  ['los angeles kings', 'la kings', 'kings'],
+  ['minnesota wild', 'wild'],
+  ['montreal canadiens', 'canadiens', 'habs'],
+  ['nashville predators', 'predators', 'preds'],
+  ['new jersey devils', 'devils'],
+  ['new york islanders', 'islanders'],
+  ['new york rangers', 'rangers'],
+  ['ottawa senators', 'senators', 'sens'],
+  ['philadelphia flyers', 'flyers'],
+  ['pittsburgh penguins', 'penguins', 'pens'],
+  ['san jose sharks', 'sharks'],
+  ['seattle kraken', 'kraken'],
+  ['st. louis blues', 'blues'],
+  ['tampa bay lightning', 'lightning', 'bolts'],
+  ['toronto maple leafs', 'maple leafs', 'leafs'],
+  ['utah mammoth', 'mammoth'],
+  ['vancouver canucks', 'canucks'],
+  ['vegas golden knights', 'golden knights', 'knights'],
+  ['washington capitals', 'capitals', 'caps'],
+  ['winnipeg jets', 'jets'],
+  ['anaheim ducks', 'ducks'],
 ];
 
-const TEAM_IDS = {
-  'Avalanche':21,'Hurricanes':12,'Red Wings':17,'Panthers':13,'Kings':26,
-  'Oilers':22,'Flames':20,'Canucks':23,'Stars':25,'Wild':30,'Predators':18,
-  'Blues':19,'Maple Leafs':10,'Lightning':14,'Senators':9,'Flyers':4,
-  'Penguins':5,'Rangers':3,'Islanders':2,'Devils':1,'Capitals':15,
-  'Bruins':6,'Sabres':7,'Kraken':55,'Knights':54,'Ducks':24,'Sharks':28,
-  'Coyotes':53
-};
-
-async function fetchSchedule(teamName) {
-  const teamId = TEAM_IDS[teamName];
-  if (!teamId) return null;
-
-  const today = new Date().toISOString().split('T')[0];
-  const future = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-  const url = `https://statsapi.web.nhl.com/api/v1/schedule?teamId=${teamId}&startDate=${today}&endDate=${future}&expand=schedule.linescore,schedule.broadcasts,schedule.game.seriesSummary`;
-
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-
-    const games = [];
-    for (const date of (data.dates || [])) {
-      for (const game of (date.games || [])) {
-        const home = game.teams.home.team.name;
-        const away = game.teams.away.team.name;
-        const opponent = home.includes(teamName) ? away : home;
-        const gameDate = new Date(game.gameDate);
-        const seriesSummary = game.seriesSummary || null;
-        const gameNumber = seriesSummary ? seriesSummary.gameNumber : null;
-        const seriesStatus = seriesSummary ? seriesSummary.seriesStatusShort : null;
-        const isPlayoff = game.gameType === 'P';
-
-        games.push({
-          date: gameDate.toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' }),
-          time: gameDate.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', timeZoneName:'short' }),
-          opponent,
-          isPlayoff,
-          gameNumber,
-          seriesStatus,
-          venue: game.venue?.name || null,
-          homeAway: home.includes(teamName) ? 'home' : 'away'
-        });
-
-        if (games.length >= 5) break;
-      }
-      if (games.length >= 5) break;
-    }
-
-    return { team: teamName, games };
-  } catch {
-    return null;
-  }
-}
-
-function detectTeam(transcript) {
+function detectNHLTeam(transcript) {
   const lower = transcript.toLowerCase();
-  for (const team of NHL_TEAMS) {
-    if (lower.includes(team.toLowerCase())) return team;
+  for (const aliases of NHL_TEAM_ALIASES) {
+    if (aliases.some((a) => lower.includes(a))) return aliases[0];
   }
   return null;
 }
 
 function isScheduleQuery(transcript) {
   const lower = transcript.toLowerCase();
-  return lower.includes('next game') || lower.includes('schedule') ||
-    lower.includes('upcoming game') || lower.includes('next match') ||
-    lower.includes('when do') || lower.includes('when does') ||
-    lower.includes('play next') || lower.includes('next few games');
+  return (
+    lower.includes('next game') ||
+    lower.includes('schedule') ||
+    lower.includes('upcoming game') ||
+    lower.includes('next match') ||
+    lower.includes('when do') ||
+    lower.includes('when does') ||
+    lower.includes('play next') ||
+    lower.includes('next few games') ||
+    lower.includes('playing next')
+  );
 }
 
-function buildScheduleContext(scheduleData) {
-  if (!scheduleData || !scheduleData.games.length) {
-    return `No upcoming games found for the ${scheduleData?.team || 'team'}.`;
+async function fetchNextGame(teamName) {
+  try {
+    const res = await fetch(`${API_BASE}/api/sports/next-game?team=${encodeURIComponent(teamName)}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
   }
-
-  const lines = [`Upcoming schedule for the ${scheduleData.team}:`];
-  scheduleData.games.forEach((g, i) => {
-    let line = `Game ${i + 1}: ${g.date} at ${g.time} vs ${g.opponent} (${g.homeAway})`;
-    if (g.isPlayoff && g.gameNumber) {
-      line += ` — Playoff Game ${g.gameNumber}`;
-    }
-    if (g.seriesStatus) {
-      line += `, Series: ${g.seriesStatus}`;
-    }
-    if (g.venue) {
-      line += `, at ${g.venue}`;
-    }
-    lines.push(line);
-  });
-
-  return lines.join('\n');
 }
 
 export function initVoiceInput(onTranscript) {
@@ -118,14 +86,19 @@ export function initVoiceInput(onTranscript) {
     if (onTranscript) onTranscript(transcript);
 
     if (isScheduleQuery(transcript)) {
-      const team = detectTeam(transcript);
+      const team = detectNHLTeam(transcript);
       if (team) {
-        const scheduleData = await fetchSchedule(team);
-        const context = buildScheduleContext(scheduleData);
-        await speakResponse(transcript, { scheduleContext: context, scheduleData });
+        const game = await fetchNextGame(team);
+        if (game) {
+          const homeAway = game.home ? 'at home vs' : 'away against';
+          const context = `Next ${game.team} game: ${homeAway} ${game.opponent} on ${game.date} at ${game.venue}.`;
+          await speakResponse(transcript, { scheduleContext: context });
+        } else {
+          await speakResponse(transcript, { scheduleContext: `Couldn't find upcoming games for the ${team}.` });
+        }
       } else {
         await speakResponse(transcript, {
-          scheduleContext: 'User asked about a schedule but no specific NHL team was detected. Ask them which team they want.'
+          scheduleContext: 'User asked about a schedule but no specific NHL team was detected. Ask them which team they want.',
         });
       }
     } else {
@@ -139,5 +112,3 @@ export function initVoiceInput(onTranscript) {
 
   return recognition;
 }
-
-export { fetchSchedule, NHL_TEAMS, TEAM_IDS };
