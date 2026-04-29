@@ -320,6 +320,11 @@ function detectIntent(text) {
       nflStandings: /standing|standings|rank|ranked|first place|last place|top of|bottom of|points/.test(lower) && /nfl|football|afc|nfc|conference|division/.test(lower),
       nflLastGames: /last.*game|last.*\d|recent game|how.*been playing|recent.*result|last.*five|last.*5/.test(lower) && /cowboys|eagles|giants|jets|patriots|dolphins|bills|ravens|steelers|browns|bengals|texans|colts|jaguars|titans|chiefs|raiders|chargers|broncos|bears|packers|lions|vikings|falcons|saints|panthers|buccaneers|cardinals|rams|seahawks|49ers|commanders|nfl|football/.test(lower),
       nflTeamRecord: /record|wins|losses|how.*doing|how.*they doing/.test(lower) && /cowboys|eagles|giants|jets|patriots|dolphins|bills|ravens|steelers|browns|bengals|texans|colts|jaguars|titans|chiefs|raiders|chargers|broncos|bears|packers|lions|vikings|falcons|saints|panthers|buccaneers|cardinals|rams|seahawks|49ers|commanders|nfl|football/.test(lower),
+      mlbNextGame: /next game|playing next|next.*play|when.*play|when.*game|schedule|upcoming game/.test(lower) && /yankees|mets|red sox|dodgers|cubs|astros|braves|phillies|cardinals|giants|rangers|mariners|padres|brewers|twins|rays|orioles|guardians|tigers|royals|angels|athletics|rockies|marlins|pirates|diamondbacks|dbacks|white sox|reds|nationals|nats|blue jays|mlb|baseball/.test(lower),
+      mlbLiveScore: /\bscore\b|what.*score|current score|live score|winning|losing|how.*going|tied|lead|leading/.test(lower) && /yankees|mets|red sox|dodgers|cubs|astros|braves|phillies|cardinals|giants|rangers|mariners|padres|brewers|twins|rays|orioles|guardians|tigers|royals|angels|athletics|rockies|marlins|pirates|diamondbacks|white sox|reds|nationals|blue jays|mlb|baseball/.test(lower),
+      mlbStandings: /standing|standings|rank|ranked|first place|last place|top of|bottom of/.test(lower) && /mlb|baseball|american league|national league|\bal\b|\bnl\b/.test(lower),
+      mlbLastGames: /last.*game|last.*\d|recent game|how.*been playing|recent.*result|last.*five|last.*5/.test(lower) && /yankees|mets|red sox|dodgers|cubs|astros|braves|phillies|cardinals|giants|rangers|mariners|padres|brewers|twins|rays|orioles|guardians|tigers|royals|angels|athletics|rockies|marlins|pirates|diamondbacks|white sox|reds|nationals|blue jays|mlb|baseball/.test(lower),
+      mlbTeamRecord: /record|wins|losses|how.*doing|how.*they doing/.test(lower) && /yankees|mets|red sox|dodgers|cubs|astros|braves|phillies|cardinals|giants|rangers|mariners|padres|brewers|twins|rays|orioles|guardians|tigers|royals|angels|athletics|rockies|marlins|pirates|diamondbacks|white sox|reds|nationals|blue jays|mlb|baseball/.test(lower),
       familyInfo: /\bsandra(?:'s)?\b|\bpeyton(?:'s)?\b/.test(lower),
       hockeySchedule: /hockey practice|hockey schedule|\btha\b|\bthai\b|sebastian(?:'s)? practice|nytex schedule|practice schedule|skating clinic|power skating|checking clinic/.test(lower),
       sms: /\btext\b|send a message|\bsms\b/.test(lower),
@@ -993,6 +998,74 @@ export default function App() {
         const top5 = (st.standings || []).slice(0, 5);
         blocks.push(formatContextBlock("NFL Standings (top 5)", top5.map(t => `${t.team} ${t.wins}-${t.losses}`).join(' | ')));
       } catch (e) { console.error("NFL standings context failed:", e); }
+    }
+
+    const MLB_TEAM_ALIASES = [
+      ['new york yankees', 'yankees'], ['new york mets', 'mets'], ['boston red sox', 'red sox'],
+      ['los angeles dodgers', 'dodgers'], ['chicago cubs', 'cubs'], ['houston astros', 'astros'],
+      ['atlanta braves', 'braves'], ['philadelphia phillies', 'phillies'], ['st. louis cardinals', 'cardinals'],
+      ['san francisco giants', 'sf giants'], ['texas rangers', 'rangers'], ['seattle mariners', 'mariners'],
+      ['san diego padres', 'padres'], ['milwaukee brewers', 'brewers'], ['minnesota twins', 'twins'],
+      ['tampa bay rays', 'rays'], ['baltimore orioles', 'orioles'], ['cleveland guardians', 'guardians'],
+      ['detroit tigers', 'tigers'], ['kansas city royals', 'royals'], ['los angeles angels', 'angels'],
+      ['oakland athletics', 'athletics'], ['colorado rockies', 'rockies'], ['miami marlins', 'marlins'],
+      ['pittsburgh pirates', 'pirates'], ['arizona diamondbacks', 'diamondbacks', 'dbacks'],
+      ['chicago white sox', 'white sox'], ['cincinnati reds', 'reds'], ['washington nationals', 'nationals', 'nats'],
+      ['toronto blue jays', 'blue jays', 'jays'],
+    ];
+    const detectMLBTeam = (q) => {
+      for (const aliases of MLB_TEAM_ALIASES) {
+        if (aliases.some(a => q.includes(a))) return aliases[0];
+      }
+      return null;
+    };
+
+    if (intents.mlbLiveScore) {
+      try {
+        const teamName = detectMLBTeam(lower);
+        if (teamName) {
+          const sc = await fetchJson(`/api/sports/mlb/score?team=${encodeURIComponent(teamName)}`);
+          blocks.push(formatContextBlock("MLB Live Score", sc.live ? sc.summary : `No MLB game in progress for the ${teamName}.`));
+        }
+      } catch (e) { console.error("MLB live score context failed:", e); }
+    }
+
+    if (intents.mlbNextGame) {
+      try {
+        const teamName = detectMLBTeam(lower);
+        if (teamName) {
+          const ng = await fetchJson(`/api/sports/mlb/next-game?team=${encodeURIComponent(teamName)}`);
+          blocks.push(formatContextBlock("MLB Next Game", `${ng.team} ${ng.home ? 'vs' : '@'} ${ng.opponent} on ${ng.date} at ${ng.venue}`));
+        }
+      } catch (e) { console.error("MLB next game context failed:", e); }
+    }
+
+    if (intents.mlbTeamRecord) {
+      try {
+        const teamName = detectMLBTeam(lower);
+        if (teamName) {
+          const rec = await fetchJson(`/api/sports/mlb/team-record?team=${encodeURIComponent(teamName)}`);
+          blocks.push(formatContextBlock("MLB Team Record", `${rec.team}: ${rec.wins}W-${rec.losses}L — ${rec.division}`));
+        }
+      } catch (e) { console.error("MLB team record context failed:", e); }
+    }
+
+    if (intents.mlbLastGames) {
+      try {
+        const teamName = detectMLBTeam(lower);
+        if (teamName) {
+          const lg = await fetchJson(`/api/sports/mlb/last-games?team=${encodeURIComponent(teamName)}`);
+          blocks.push(formatContextBlock("MLB Last Games", (lg.lastGames || []).join(' | ') || 'No recent games'));
+        }
+      } catch (e) { console.error("MLB last games context failed:", e); }
+    }
+
+    if (intents.mlbStandings) {
+      try {
+        const st = await fetchJson('/api/sports/mlb/standings');
+        const top5 = (st.standings || []).slice(0, 5);
+        blocks.push(formatContextBlock("MLB Standings (top 5)", top5.map(t => `${t.team} ${t.wins}-${t.losses}`).join(' | ')));
+      } catch (e) { console.error("MLB standings context failed:", e); }
     }
 
     if (!intents.nextGame && !intents.teamRecord && !intents.lastGames && !intents.standings && intents.sports) {

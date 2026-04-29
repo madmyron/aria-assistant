@@ -511,4 +511,149 @@ router.get('/nfl/team-record', async (req, res) => {
   }
 });
 
+// ─── MLB routes ───────────────────────────────────────────────────────────────
+
+const MLB_TEAMS = {
+  'arizona diamondbacks': 'ARI', 'diamondbacks': 'ARI', 'dbacks': 'ARI',
+  'atlanta braves': 'ATL', 'braves': 'ATL',
+  'baltimore orioles': 'BAL', 'orioles': 'BAL',
+  'boston red sox': 'BOS', 'red sox': 'BOS',
+  'chicago cubs': 'CHC', 'cubs': 'CHC',
+  'chicago white sox': 'CWS', 'white sox': 'CWS',
+  'cincinnati reds': 'CIN', 'reds': 'CIN',
+  'cleveland guardians': 'CLE', 'guardians': 'CLE',
+  'colorado rockies': 'COL', 'rockies': 'COL',
+  'detroit tigers': 'DET', 'tigers': 'DET',
+  'houston astros': 'HOU', 'astros': 'HOU',
+  'kansas city royals': 'KC', 'royals': 'KC',
+  'los angeles angels': 'LAA', 'angels': 'LAA',
+  'los angeles dodgers': 'LAD', 'dodgers': 'LAD',
+  'miami marlins': 'MIA', 'marlins': 'MIA',
+  'milwaukee brewers': 'MIL', 'brewers': 'MIL',
+  'minnesota twins': 'MIN', 'twins': 'MIN',
+  'new york mets': 'NYM', 'mets': 'NYM',
+  'new york yankees': 'NYY', 'yankees': 'NYY',
+  'oakland athletics': 'OAK', 'athletics': 'OAK', 'as': 'OAK',
+  'philadelphia phillies': 'PHI', 'phillies': 'PHI',
+  'pittsburgh pirates': 'PIT', 'pirates': 'PIT',
+  'san diego padres': 'SD', 'padres': 'SD',
+  'san francisco giants': 'SF', 'sf giants': 'SF',
+  'seattle mariners': 'SEA', 'mariners': 'SEA',
+  'st. louis cardinals': 'STL', 'cardinals': 'STL',
+  'tampa bay rays': 'TB', 'rays': 'TB',
+  'texas rangers': 'TEX', 'rangers': 'TEX',
+  'toronto blue jays': 'TOR', 'blue jays': 'TOR', 'jays': 'TOR',
+  'washington nationals': 'WSH', 'nationals': 'WSH', 'nats': 'WSH',
+};
+
+router.get('/mlb/next-game', async (req, res) => {
+  try {
+    const teamQuery = (req.query.team || '').toLowerCase().trim();
+    const abbr = MLB_TEAMS[teamQuery];
+    if (!abbr) return res.status(404).json({ error: `MLB team not found: ${req.query.team}` });
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/teams/${abbr}/schedule`);
+    if (!r.ok) throw new Error('ESPN MLB schedule error');
+    const data = await r.json();
+    const now = new Date();
+    const next = (data.events || []).find(e => new Date(e.date) > now && e.competitions?.[0]?.status?.type?.state === 'pre');
+    if (!next) return res.status(404).json({ error: `No upcoming MLB games for ${teamQuery}` });
+    const comp = next.competitions?.[0];
+    const home = comp?.competitors?.find(c => c.homeAway === 'home');
+    const away = comp?.competitors?.find(c => c.homeAway === 'away');
+    const isHome = home?.team?.abbreviation === abbr;
+    return res.json({ sport: 'MLB', team: isHome ? home?.team?.displayName : away?.team?.displayName, opponent: isHome ? away?.team?.displayName : home?.team?.displayName, date: new Date(next.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }), venue: comp?.venue?.fullName || 'TBD', home: isHome });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/mlb/score', async (req, res) => {
+  try {
+    const teamQuery = (req.query.team || '').toLowerCase().trim();
+    const abbr = MLB_TEAMS[teamQuery];
+    if (!abbr) return res.status(404).json({ error: `MLB team not found: ${req.query.team}` });
+    const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard');
+    if (!r.ok) throw new Error('ESPN MLB scoreboard error');
+    const data = await r.json();
+    const game = (data.events || []).find(e => e.competitions?.[0]?.status?.type?.state === 'in' && e.competitions?.[0]?.competitors?.some(c => c.team?.abbreviation === abbr));
+    if (!game) return res.status(404).json({ error: 'No MLB game in progress', live: false });
+    const comp = game.competitions?.[0];
+    const home = comp?.competitors?.find(c => c.homeAway === 'home');
+    const away = comp?.competitors?.find(c => c.homeAway === 'away');
+    const inning = comp?.status?.period || '?';
+    const clock = comp?.status?.displayClock || '';
+    return res.json({ live: true, homeName: home?.team?.displayName, awayName: away?.team?.displayName, homeScore: home?.score, awayScore: away?.score, inning, clock, summary: `${away?.team?.displayName} ${away?.score}, ${home?.team?.displayName} ${home?.score} — Inning ${inning} ${clock}` });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/mlb/standings', async (_req, res) => {
+  try {
+    const r = await fetch('https://site.api.espn.com/apis/v2/sports/baseball/mlb/standings');
+    if (!r.ok) throw new Error('ESPN MLB standings error');
+    const data = await r.json();
+    const teams = [];
+    for (const conf of (data.children || [])) {
+      for (const div of (conf.children || [])) {
+        for (const entry of (div.standings?.entries || [])) {
+          const stats = {};
+          (entry.stats || []).forEach(s => { stats[s.name] = s.value; });
+          teams.push({ team: entry.team?.displayName, wins: stats.wins || 0, losses: stats.losses || 0, pct: stats.winPercent || 0, league: conf.name, division: div.name });
+        }
+      }
+    }
+    return res.json({ standings: teams.sort((a, b) => b.pct - a.pct) });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/mlb/last-games', async (req, res) => {
+  try {
+    const teamQuery = (req.query.team || '').toLowerCase().trim();
+    const abbr = MLB_TEAMS[teamQuery];
+    if (!abbr) return res.status(404).json({ error: `MLB team not found: ${req.query.team}` });
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/teams/${abbr}/schedule`);
+    if (!r.ok) throw new Error('ESPN MLB schedule error');
+    const data = await r.json();
+    const now = new Date();
+    const finished = (data.events || []).filter(e => new Date(e.date) < now && e.competitions?.[0]?.status?.type?.state === 'post').slice(-5);
+    const games = finished.map(e => {
+      const comp = e.competitions?.[0];
+      const us = comp?.competitors?.find(c => c.team?.abbreviation === abbr);
+      const them = comp?.competitors?.find(c => c.team?.abbreviation !== abbr);
+      return `${us?.winner ? 'W' : 'L'} ${us?.score}-${them?.score} vs ${them?.team?.displayName} (${new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`;
+    });
+    return res.json({ team: abbr, lastGames: games });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/mlb/team-record', async (req, res) => {
+  try {
+    const teamQuery = (req.query.team || '').toLowerCase().trim();
+    const abbr = MLB_TEAMS[teamQuery];
+    if (!abbr) return res.status(404).json({ error: `MLB team not found: ${req.query.team}` });
+    const r = await fetch('https://site.api.espn.com/apis/v2/sports/baseball/mlb/standings');
+    if (!r.ok) throw new Error('ESPN MLB standings error');
+    const data = await r.json();
+    for (const conf of (data.children || [])) {
+      for (const div of (conf.children || [])) {
+        for (const entry of (div.standings?.entries || [])) {
+          if (entry.team?.abbreviation === abbr) {
+            const stats = {};
+            (entry.stats || []).forEach(s => { stats[s.name] = s.value; });
+            return res.json({ team: entry.team?.displayName, wins: stats.wins, losses: stats.losses, pct: stats.winPercent, league: conf.name, division: div.name });
+          }
+        }
+      }
+    }
+    return res.status(404).json({ error: `Team ${abbr} not found in MLB standings` });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
