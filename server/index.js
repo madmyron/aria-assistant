@@ -145,7 +145,6 @@ function sanitizeTextForTts(text = '') {
   return s.replace(/\s+/g, ' ').trim();
 }
 
-// ESPN upcoming games cache
 const ESPN_CACHE = new Map();
 const ESPN_CACHE_TTL = 60 * 60 * 1000;
 
@@ -204,6 +203,39 @@ function matchesTeam(game, query) {
     game.awayAbbr.toLowerCase() === q
   );
 }
+
+let nflCache = null;
+let nflCacheTs = 0;
+const NFL_CACHE_TTL = 3600 * 1000;
+
+app.get('/api/sports/nfl', async (_req, res) => {
+  try {
+    if (nflCache && Date.now() - nflCacheTs < NFL_CACHE_TTL) {
+      return res.json(nflCache);
+    }
+    const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard');
+    if (!r.ok) throw new Error(`ESPN NFL scoreboard returned ${r.status}`);
+    const data = await r.json();
+    const games = (data?.events || []).map((event) => {
+      const comp = event?.competitions?.[0];
+      const home = comp?.competitors?.find((c) => c.homeAway === 'home');
+      const away = comp?.competitors?.find((c) => c.homeAway === 'away');
+      const state = comp?.status?.type?.state || '';
+      return {
+        away: away?.team?.displayName || away?.team?.name || '',
+        home: home?.team?.displayName || home?.team?.name || '',
+        time: event.date || comp?.date || null,
+        status: state === 'pre' ? 'scheduled' : state === 'in' ? 'live' : 'final',
+      };
+    });
+    const result = { sport: 'NFL', games };
+    nflCache = result;
+    nflCacheTs = Date.now();
+    return res.json(result);
+  } catch (err) {
+    return res.status(500).json({ error: 'Could not fetch NFL games', fallback: [] });
+  }
+});
 
 app.get('/api/upcoming-games', async (req, res) => {
   try {
