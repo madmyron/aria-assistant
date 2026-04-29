@@ -763,6 +763,7 @@ export default function App() {
 
   async function buildContext(text) {
     const intents = detectIntent(text);
+    const lower = text.toLowerCase();
     const blocks = [];
 
     if (intents.weather) {
@@ -1283,7 +1284,7 @@ export default function App() {
           const when = new Date(parsed.datetime).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
           const recurringNote = parsed.recurring !== 'none' ? `, repeating ${parsed.recurring}` : '';
           const contextMsg = `[Action: Created reminder — "${result.reminder.text}" on ${when}${recurringNote}. Confirm casually in Aria's voice.]`;
-          const messagesForApi = [...messages, createMessage('user', `${userText}\n\n${contextMsg}`)];
+          const messagesForApi = [...updated.slice(0, -1), createMessage('user', `${userText}\n\n${contextMsg}`)];
           const chat = await fetchJson('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1349,7 +1350,7 @@ export default function App() {
           contextMsg = `[List error: ${e.message}]`;
         }
 
-        const messagesForApi = [...messages, createMessage('user', `${userText}\n\n${contextMsg}`)];
+        const messagesForApi = [...updated.slice(0, -1), createMessage('user', `${userText}\n\n${contextMsg}`)];
         const chat = await fetchJson('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1367,7 +1368,7 @@ export default function App() {
 
       const context = await buildContext(userText);
       const enrichedUserText = context ? `${userText}\n\n${context}` : userText;
-      const messagesForApi = [...messages, createMessage("user", enrichedUserText)];
+      const messagesForApi = [...updated.slice(0, -1), createMessage("user", enrichedUserText)];
 
       console.log("[sendMessage] default chat branch");
       const chat = await fetchJson("/api/chat", {
