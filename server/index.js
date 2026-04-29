@@ -765,7 +765,8 @@ app.get('/api/sports/next-game', async (req, res) => {
     const sched = await schedRes.json();
 
     const now = new Date();
-    const next = (sched.games || []).find((g) => new Date(g.gameDate) >= now && g.gameState !== 'OFF' && g.gameState !== 'FINAL');
+    const liveStates = ['LIVE', 'PRG', 'CRIT'];
+    const next = (sched.games || []).find((g) => new Date(g.gameDate) >= now && g.gameState !== 'OFF' && g.gameState !== 'FINAL' && !liveStates.includes(g.gameState));
     if (!next) return res.status(404).json({ error: `No upcoming games found for ${teamQuery}` });
 
     const isHome = next.homeTeam?.abbrev === abbr;
