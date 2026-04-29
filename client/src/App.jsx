@@ -306,6 +306,7 @@ function detectIntent(text) {
       weather: /weather|temp|forecast|hot|cold|outside/.test(lower),
       sports: /score|game|cowboys|mavs|stars|rangers|mets|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|coyotes|mammoth|kraken|nfl|nba|mlb|nhl|football|basketball|hockey/.test(lower),
       nextGame: /next game|playing next|next.*play|when.*play|when.*game|schedule|upcoming game/.test(lower) && /stars|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|mammoth|kraken|rangers|canes/.test(lower),
+      liveScore: /\bscore\b|what.*score|current score|live score|winning|losing|how.*going|tied|lead|leading/.test(lower) && /stars|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|mammoth|kraken|rangers|canes|nhl|hockey/.test(lower),
       standings: /standing|standings|rank|ranked|first place|last place|top of|bottom of|division leader|points/.test(lower) && /nhl|hockey|division|atlantic|metropolitan|central|pacific/.test(lower),
       teamRecord: /record|wins|losses|how.*doing|how.*they doing/.test(lower) && /stars|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|mammoth|kraken|rangers|canes/.test(lower),
       lastGames: /last.*game|last.*\d|recent game|how.*been playing|recent.*result|last.*five|last.*5/.test(lower) && /stars|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|mammoth|kraken|rangers|canes/.test(lower),
@@ -782,6 +783,19 @@ export default function App() {
       }
       return null;
     };
+
+    if (intents.liveScore) {
+      try {
+        const teamName = detectNHLTeam(lower);
+        if (teamName) {
+          const sc = await fetchJson(`/api/sports/score?team=${encodeURIComponent(teamName)}`);
+          if (sc.live) blocks.push(formatContextBlock("Live Score", sc.summary));
+          else blocks.push(formatContextBlock("Live Score", `No game currently in progress for the ${teamName}.`));
+        }
+      } catch (e) {
+        console.error("Live score context failed:", e);
+      }
+    }
 
     if (intents.nextGame) {
       try {

@@ -788,6 +788,35 @@ app.get('/api/sports/next-game', async (req, res) => {
   }
 });
 
+app.get('/api/sports/score', async (req, res) => {
+  try {
+    const teamQuery = (req.query.team || '').toLowerCase().trim();
+    const abbr = NHL_NEXT_GAME_TEAMS[teamQuery];
+    if (!abbr) return res.status(404).json({ error: `NHL team not found: ${req.query.team}` });
+
+    const schedRes = await fetch(`https://api-web.nhle.com/v1/club-schedule-season/${abbr}/now`);
+    if (!schedRes.ok) throw new Error(`NHL API error for ${abbr}`);
+    const sched = await schedRes.json();
+
+    const liveStates = ['LIVE', 'PRG', 'CRIT'];
+    const live = (sched.games || []).find((g) => liveStates.includes(g.gameState));
+    if (!live) return res.status(404).json({ error: 'No game in progress', live: false });
+
+    const homeScore = live.homeTeam?.score ?? 0;
+    const awayScore = live.awayTeam?.score ?? 0;
+    const homeName = live.homeTeam?.commonName?.default || live.homeTeam?.abbrev;
+    const awayName = live.awayTeam?.commonName?.default || live.awayTeam?.abbrev;
+    const period = live.periodDescriptor?.number || '?';
+    const periodType = live.periodDescriptor?.periodType || '';
+    const periodLabel = periodType === 'OT' ? 'OT' : `P${period}`;
+    const summary = `${awayName} ${awayScore}, ${homeName} ${homeScore} — ${periodLabel} in progress`;
+
+    return res.json({ live: true, homeName, awayName, homeScore, awayScore, period, periodLabel, summary });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/sports/standings', async (req, res) => {
   try {
     const r = await fetch('https://api-web.nhle.com/v1/standings/now');
