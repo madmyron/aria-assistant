@@ -39,6 +39,11 @@ const NHL_TEAM_ALIASES = [
   ['anaheim ducks', 'ducks'],
 ];
 
+const conversationContext = {
+  last_team: null,
+  last_sport: null,
+};
+
 function detectNHLTeam(transcript) {
   const lower = transcript.toLowerCase();
   for (const aliases of NHL_TEAM_ALIASES) {
@@ -86,7 +91,16 @@ export function initVoiceInput(onTranscript) {
     if (onTranscript) onTranscript(transcript);
 
     if (isScheduleQuery(transcript)) {
-      const team = detectNHLTeam(transcript);
+      const detectedTeam = detectNHLTeam(transcript);
+      const team = detectedTeam || conversationContext.last_team;
+
+      if (detectedTeam && detectedTeam !== conversationContext.last_team) {
+        conversationContext.last_team = detectedTeam;
+        conversationContext.last_sport = 'nhl';
+      } else if (detectedTeam) {
+        conversationContext.last_sport = 'nhl';
+      }
+
       if (team) {
         const game = await fetchNextGame(team);
         if (game) {
@@ -102,6 +116,11 @@ export function initVoiceInput(onTranscript) {
         });
       }
     } else {
+      const detectedTeam = detectNHLTeam(transcript);
+      if (detectedTeam) {
+        conversationContext.last_team = detectedTeam;
+        conversationContext.last_sport = 'nhl';
+      }
       await speakResponse(transcript);
     }
   };
