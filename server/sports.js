@@ -364,4 +364,151 @@ router.get('/nba/team-record', async (req, res) => {
   }
 });
 
+// ─── NFL routes ───────────────────────────────────────────────────────────────
+
+const NFL_TEAMS = {
+  'arizona cardinals': 'ARI', 'cardinals': 'ARI',
+  'atlanta falcons': 'ATL', 'falcons': 'ATL',
+  'baltimore ravens': 'BAL', 'ravens': 'BAL',
+  'buffalo bills': 'BUF', 'bills': 'BUF',
+  'carolina panthers': 'CAR', 'panthers': 'CAR',
+  'chicago bears': 'CHI', 'bears': 'CHI',
+  'cincinnati bengals': 'CIN', 'bengals': 'CIN',
+  'cleveland browns': 'CLE', 'browns': 'CLE',
+  'dallas cowboys': 'DAL', 'cowboys': 'DAL',
+  'denver broncos': 'DEN', 'broncos': 'DEN',
+  'detroit lions': 'DET', 'lions': 'DET',
+  'green bay packers': 'GB', 'packers': 'GB',
+  'houston texans': 'HOU', 'texans': 'HOU',
+  'indianapolis colts': 'IND', 'colts': 'IND',
+  'jacksonville jaguars': 'JAX', 'jaguars': 'JAX', 'jags': 'JAX',
+  'kansas city chiefs': 'KC', 'chiefs': 'KC',
+  'las vegas raiders': 'LV', 'raiders': 'LV',
+  'los angeles chargers': 'LAC', 'chargers': 'LAC',
+  'los angeles rams': 'LAR', 'rams': 'LAR',
+  'miami dolphins': 'MIA', 'dolphins': 'MIA',
+  'minnesota vikings': 'MIN', 'vikings': 'MIN',
+  'new england patriots': 'NE', 'patriots': 'NE', 'pats': 'NE',
+  'new orleans saints': 'NO', 'saints': 'NO',
+  'new york giants': 'NYG', 'giants': 'NYG',
+  'new york jets': 'NYJ', 'jets': 'NYJ',
+  'philadelphia eagles': 'PHI', 'eagles': 'PHI',
+  'pittsburgh steelers': 'PIT', 'steelers': 'PIT',
+  'san francisco 49ers': 'SF', '49ers': 'SF', 'niners': 'SF',
+  'seattle seahawks': 'SEA', 'seahawks': 'SEA',
+  'tampa bay buccaneers': 'TB', 'buccaneers': 'TB', 'bucs': 'TB',
+  'tennessee titans': 'TEN', 'titans': 'TEN',
+  'washington commanders': 'WSH', 'commanders': 'WSH',
+};
+
+router.get('/nfl/next-game', async (req, res) => {
+  try {
+    const teamQuery = (req.query.team || '').toLowerCase().trim();
+    const abbr = NFL_TEAMS[teamQuery];
+    if (!abbr) return res.status(404).json({ error: `NFL team not found: ${req.query.team}` });
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${abbr}/schedule`);
+    if (!r.ok) throw new Error('ESPN NFL schedule error');
+    const data = await r.json();
+    const now = new Date();
+    const next = (data.events || []).find(e => new Date(e.date) > now && e.competitions?.[0]?.status?.type?.state === 'pre');
+    if (!next) return res.status(404).json({ error: `No upcoming NFL games for ${teamQuery}` });
+    const comp = next.competitions?.[0];
+    const home = comp?.competitors?.find(c => c.homeAway === 'home');
+    const away = comp?.competitors?.find(c => c.homeAway === 'away');
+    const isHome = home?.team?.abbreviation === abbr;
+    return res.json({ sport: 'NFL', team: isHome ? home?.team?.displayName : away?.team?.displayName, opponent: isHome ? away?.team?.displayName : home?.team?.displayName, date: new Date(next.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }), venue: comp?.venue?.fullName || 'TBD', home: isHome });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/nfl/score', async (req, res) => {
+  try {
+    const teamQuery = (req.query.team || '').toLowerCase().trim();
+    const abbr = NFL_TEAMS[teamQuery];
+    if (!abbr) return res.status(404).json({ error: `NFL team not found: ${req.query.team}` });
+    const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard');
+    if (!r.ok) throw new Error('ESPN NFL scoreboard error');
+    const data = await r.json();
+    const game = (data.events || []).find(e => e.competitions?.[0]?.status?.type?.state === 'in' && e.competitions?.[0]?.competitors?.some(c => c.team?.abbreviation === abbr));
+    if (!game) return res.status(404).json({ error: 'No NFL game in progress', live: false });
+    const comp = game.competitions?.[0];
+    const home = comp?.competitors?.find(c => c.homeAway === 'home');
+    const away = comp?.competitors?.find(c => c.homeAway === 'away');
+    const period = comp?.status?.period || '?';
+    const clock = comp?.status?.displayClock || '';
+    return res.json({ live: true, homeName: home?.team?.displayName, awayName: away?.team?.displayName, homeScore: home?.score, awayScore: away?.score, period, clock, summary: `${away?.team?.displayName} ${away?.score}, ${home?.team?.displayName} ${home?.score} — Q${period} ${clock}` });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/nfl/standings', async (_req, res) => {
+  try {
+    const r = await fetch('https://site.api.espn.com/apis/v2/sports/football/nfl/standings');
+    if (!r.ok) throw new Error('ESPN NFL standings error');
+    const data = await r.json();
+    const teams = [];
+    for (const conf of (data.children || [])) {
+      for (const div of (conf.children || [])) {
+        for (const entry of (div.standings?.entries || [])) {
+          const stats = {};
+          (entry.stats || []).forEach(s => { stats[s.name] = s.value; });
+          teams.push({ team: entry.team?.displayName, wins: stats.wins || 0, losses: stats.losses || 0, ties: stats.ties || 0, pct: stats.winPercent || 0, conference: conf.name, division: div.name });
+        }
+      }
+    }
+    return res.json({ standings: teams.sort((a, b) => b.pct - a.pct) });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/nfl/last-games', async (req, res) => {
+  try {
+    const teamQuery = (req.query.team || '').toLowerCase().trim();
+    const abbr = NFL_TEAMS[teamQuery];
+    if (!abbr) return res.status(404).json({ error: `NFL team not found: ${req.query.team}` });
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${abbr}/schedule`);
+    if (!r.ok) throw new Error('ESPN NFL schedule error');
+    const data = await r.json();
+    const now = new Date();
+    const finished = (data.events || []).filter(e => new Date(e.date) < now && e.competitions?.[0]?.status?.type?.state === 'post').slice(-5);
+    const games = finished.map(e => {
+      const comp = e.competitions?.[0];
+      const us = comp?.competitors?.find(c => c.team?.abbreviation === abbr);
+      const them = comp?.competitors?.find(c => c.team?.abbreviation !== abbr);
+      return `${us?.winner ? 'W' : 'L'} ${us?.score}-${them?.score} vs ${them?.team?.displayName} (${new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`;
+    });
+    return res.json({ team: abbr, lastGames: games });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/nfl/team-record', async (req, res) => {
+  try {
+    const teamQuery = (req.query.team || '').toLowerCase().trim();
+    const abbr = NFL_TEAMS[teamQuery];
+    if (!abbr) return res.status(404).json({ error: `NFL team not found: ${req.query.team}` });
+    const r = await fetch('https://site.api.espn.com/apis/v2/sports/football/nfl/standings');
+    if (!r.ok) throw new Error('ESPN NFL standings error');
+    const data = await r.json();
+    for (const conf of (data.children || [])) {
+      for (const div of (conf.children || [])) {
+        for (const entry of (div.standings?.entries || [])) {
+          if (entry.team?.abbreviation === abbr) {
+            const stats = {};
+            (entry.stats || []).forEach(s => { stats[s.name] = s.value; });
+            return res.json({ team: entry.team?.displayName, wins: stats.wins, losses: stats.losses, ties: stats.ties, pct: stats.winPercent, conference: conf.name, division: div.name });
+          }
+        }
+      }
+    }
+    return res.status(404).json({ error: `Team ${abbr} not found in NFL standings` });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
