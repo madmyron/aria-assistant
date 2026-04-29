@@ -409,6 +409,7 @@ export default function App() {
   const recognitionActiveRef = useRef(false);
   const bottomRef = useRef(null);
   const memoryInitialized = useRef(false);
+  const sendMessageRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -478,7 +479,7 @@ export default function App() {
               console.log('Processing voice input:', commandText);
               audioUnlocked = true;
               unlockAudio();
-              sendMessage(commandText);
+              sendMessageRef.current(commandText);
               handledFinalResult = true;
             }
         }
@@ -1391,6 +1392,8 @@ export default function App() {
       sendMessageInProgress = false;
     }
   }
+
+  sendMessageRef.current = sendMessage;
 
   function renderMessage(content) {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
