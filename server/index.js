@@ -638,6 +638,158 @@ const NHL_NEXT_GAME_TEAMS = {
   'winnipeg jets': 'WPG', 'jets': 'WPG',
 };
 
+const NBA_TEAMS = {
+  'atlanta hawks': 'ATL', 'hawks': 'ATL',
+  'boston celtics': 'BOS', 'celtics': 'BOS',
+  'brooklyn nets': 'BKN', 'nets': 'BKN',
+  'charlotte hornets': 'CHA', 'hornets': 'CHA',
+  'chicago bulls': 'CHI', 'bulls': 'CHI',
+  'cleveland cavaliers': 'CLE', 'cavaliers': 'CLE', 'cavs': 'CLE',
+  'dallas mavericks': 'DAL', 'mavericks': 'DAL', 'mavs': 'DAL',
+  'denver nuggets': 'DEN', 'nuggets': 'DEN',
+  'detroit pistons': 'DET', 'pistons': 'DET',
+  'golden state warriors': 'GSW', 'warriors': 'GSW',
+  'houston rockets': 'HOU', 'rockets': 'HOU',
+  'indiana pacers': 'IND', 'pacers': 'IND',
+  'la clippers': 'LAC', 'clippers': 'LAC',
+  'los angeles lakers': 'LAL', 'lakers': 'LAL',
+  'memphis grizzlies': 'MEM', 'grizzlies': 'MEM', 'grizz': 'MEM',
+  'miami heat': 'MIA', 'heat': 'MIA',
+  'milwaukee bucks': 'MIL', 'bucks': 'MIL',
+  'minnesota timberwolves': 'MIN', 'timberwolves': 'MIN', 'wolves': 'MIN',
+  'new orleans pelicans': 'NOP', 'pelicans': 'NOP',
+  'new york knicks': 'NYK', 'knicks': 'NYK',
+  'oklahoma city thunder': 'OKC', 'thunder': 'OKC',
+  'orlando magic': 'ORL', 'magic': 'ORL',
+  'philadelphia 76ers': 'PHI', '76ers': 'PHI', 'sixers': 'PHI',
+  'phoenix suns': 'PHX', 'suns': 'PHX',
+  'portland trail blazers': 'POR', 'trail blazers': 'POR', 'blazers': 'POR',
+  'sacramento kings': 'SAC', 'kings': 'SAC',
+  'san antonio spurs': 'SAS', 'spurs': 'SAS',
+  'toronto raptors': 'TOR', 'raptors': 'TOR',
+  'utah jazz': 'UTA', 'jazz': 'UTA',
+  'washington wizards': 'WAS', 'wizards': 'WAS',
+};
+
+app.get('/api/sports/nba/next-game', async (req, res) => {
+  try {
+    const teamQuery = (req.query.team || '').toLowerCase().trim();
+    const abbr = NBA_TEAMS[teamQuery];
+    if (!abbr) return res.status(404).json({ error: `NBA team not found: ${req.query.team}` });
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${abbr}/schedule`);
+    if (!r.ok) throw new Error('ESPN NBA schedule error');
+    const data = await r.json();
+    const now = new Date();
+    const next = (data.events || []).find(e => new Date(e.date) > now && e.competitions?.[0]?.status?.type?.state === 'pre');
+    if (!next) return res.status(404).json({ error: `No upcoming NBA games for ${teamQuery}` });
+    const comp = next.competitions?.[0];
+    const home = comp?.competitors?.find(c => c.homeAway === 'home');
+    const away = comp?.competitors?.find(c => c.homeAway === 'away');
+    const isHome = home?.team?.abbreviation === abbr;
+    const opponent = isHome ? away?.team?.displayName : home?.team?.displayName;
+    const venue = comp?.venue?.fullName || 'TBD';
+    const dateStr = new Date(next.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    return res.json({ sport: 'NBA', team: isHome ? home?.team?.displayName : away?.team?.displayName, opponent, date: dateStr, venue, home: isHome });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/sports/nba/score', async (req, res) => {
+  try {
+    const teamQuery = (req.query.team || '').toLowerCase().trim();
+    const abbr = NBA_TEAMS[teamQuery];
+    if (!abbr) return res.status(404).json({ error: `NBA team not found: ${req.query.team}` });
+    const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard');
+    if (!r.ok) throw new Error('ESPN NBA scoreboard error');
+    const data = await r.json();
+    const game = (data.events || []).find(e =>
+      e.competitions?.[0]?.status?.type?.state === 'in' &&
+      e.competitions?.[0]?.competitors?.some(c => c.team?.abbreviation === abbr)
+    );
+    if (!game) return res.status(404).json({ error: 'No NBA game in progress', live: false });
+    const comp = game.competitions?.[0];
+    const home = comp?.competitors?.find(c => c.homeAway === 'home');
+    const away = comp?.competitors?.find(c => c.homeAway === 'away');
+    const period = comp?.status?.period || '?';
+    const clock = comp?.status?.displayClock || '';
+    const summary = `${away?.team?.displayName} ${away?.score}, ${home?.team?.displayName} ${home?.score} — Q${period} ${clock}`;
+    return res.json({ live: true, homeName: home?.team?.displayName, awayName: away?.team?.displayName, homeScore: home?.score, awayScore: away?.score, period, clock, summary });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/sports/nba/standings', async (req, res) => {
+  try {
+    const r = await fetch('https://site.api.espn.com/apis/v2/sports/basketball/nba/standings');
+    if (!r.ok) throw new Error('ESPN NBA standings error');
+    const data = await r.json();
+    const teams = [];
+    for (const conf of (data.children || [])) {
+      for (const div of (conf.children || [])) {
+        for (const entry of (div.standings?.entries || [])) {
+          const stats = {};
+          (entry.stats || []).forEach(s => { stats[s.name] = s.value; });
+          teams.push({ team: entry.team?.displayName, wins: stats.wins || 0, losses: stats.losses || 0, pct: stats.winPercent || 0, conference: conf.name });
+        }
+      }
+    }
+    return res.json({ standings: teams.sort((a, b) => b.pct - a.pct) });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/sports/nba/last-games', async (req, res) => {
+  try {
+    const teamQuery = (req.query.team || '').toLowerCase().trim();
+    const abbr = NBA_TEAMS[teamQuery];
+    if (!abbr) return res.status(404).json({ error: `NBA team not found: ${req.query.team}` });
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${abbr}/schedule`);
+    if (!r.ok) throw new Error('ESPN NBA schedule error');
+    const data = await r.json();
+    const now = new Date();
+    const finished = (data.events || [])
+      .filter(e => new Date(e.date) < now && e.competitions?.[0]?.status?.type?.state === 'post')
+      .slice(-5);
+    const games = finished.map(e => {
+      const comp = e.competitions?.[0];
+      const us = comp?.competitors?.find(c => c.team?.abbreviation === abbr);
+      const them = comp?.competitors?.find(c => c.team?.abbreviation !== abbr);
+      return `${us?.winner ? 'W' : 'L'} ${us?.score}-${them?.score} vs ${them?.team?.displayName} (${new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`;
+    });
+    return res.json({ team: abbr, lastGames: games });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/sports/nba/team-record', async (req, res) => {
+  try {
+    const teamQuery = (req.query.team || '').toLowerCase().trim();
+    const abbr = NBA_TEAMS[teamQuery];
+    if (!abbr) return res.status(404).json({ error: `NBA team not found: ${req.query.team}` });
+    const r = await fetch('https://site.api.espn.com/apis/v2/sports/basketball/nba/standings');
+    if (!r.ok) throw new Error('ESPN NBA standings error');
+    const data = await r.json();
+    for (const conf of (data.children || [])) {
+      for (const div of (conf.children || [])) {
+        for (const entry of (div.standings?.entries || [])) {
+          if (entry.team?.abbreviation === abbr) {
+            const stats = {};
+            (entry.stats || []).forEach(s => { stats[s.name] = s.value; });
+            return res.json({ team: entry.team?.displayName, wins: stats.wins, losses: stats.losses, pct: stats.winPercent, conference: conf.name });
+          }
+        }
+      }
+    }
+    return res.status(404).json({ error: `Team ${abbr} not found in NBA standings` });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/sports/next-game', async (req, res) => {
   try {
     const teamQuery = (req.query.team || '').toLowerCase().trim();

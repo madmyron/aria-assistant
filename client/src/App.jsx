@@ -310,6 +310,11 @@ function detectIntent(text) {
       standings: /standing|standings|rank|ranked|first place|last place|top of|bottom of|division leader|points/.test(lower) && /nhl|hockey|division|atlantic|metropolitan|central|pacific/.test(lower),
       teamRecord: /record|wins|losses|how.*doing|how.*they doing/.test(lower) && /stars|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|mammoth|kraken|rangers|canes/.test(lower),
       lastGames: /last.*game|last.*\d|recent game|how.*been playing|recent.*result|last.*five|last.*5/.test(lower) && /stars|bruins|sabres|canucks|flyers|penguins|red wings|wild|blackhawks|blue jackets|predators|avalanche|golden knights|knights|oilers|flames|kings|ducks|sharks|maple leafs|leafs|senators|habs|canadiens|capitals|lightning|jets|devils|islanders|hurricanes|mammoth|kraken|rangers|canes/.test(lower),
+      nbаNextGame: /next game|playing next|next.*play|when.*play|when.*game|schedule|upcoming game/.test(lower) && /mavs|mavericks|lakers|celtics|warriors|bucks|heat|bulls|knicks|nets|cavaliers|cavs|nuggets|pistons|rockets|pacers|clippers|grizzlies|grizz|pelicans|thunder|magic|sixers|76ers|suns|blazers|kings|spurs|raptors|jazz|wizards|hornets|timberwolves|wolves|nba|basketball/.test(lower),
+      nbaLiveScore: /\bscore\b|what.*score|current score|live score|winning|losing|how.*going|tied|lead|leading/.test(lower) && /mavs|mavericks|lakers|celtics|warriors|bucks|heat|bulls|knicks|nets|cavaliers|cavs|nuggets|pistons|rockets|pacers|clippers|grizzlies|pelicans|thunder|magic|sixers|suns|blazers|kings|spurs|raptors|jazz|wizards|hornets|wolves|nba|basketball/.test(lower),
+      nbaStandings: /standing|standings|rank|ranked|first place|last place|top of|bottom of|points/.test(lower) && /nba|basketball|eastern|western|conference/.test(lower),
+      nbaLastGames: /last.*game|last.*\d|recent game|how.*been playing|recent.*result|last.*five|last.*5/.test(lower) && /mavs|mavericks|lakers|celtics|warriors|bucks|heat|bulls|knicks|nets|cavaliers|cavs|nuggets|pistons|rockets|pacers|clippers|grizzlies|pelicans|thunder|magic|sixers|suns|blazers|kings|spurs|raptors|jazz|wizards|hornets|wolves|nba|basketball/.test(lower),
+      nbaTeamRecord: /record|wins|losses|how.*doing|how.*they doing/.test(lower) && /mavs|mavericks|lakers|celtics|warriors|bucks|heat|bulls|knicks|nets|cavaliers|cavs|nuggets|pistons|rockets|pacers|clippers|grizzlies|pelicans|thunder|magic|sixers|suns|blazers|kings|spurs|raptors|jazz|wizards|hornets|wolves|nba|basketball/.test(lower),
       familyInfo: /\bsandra(?:'s)?\b|\bpeyton(?:'s)?\b/.test(lower),
       hockeySchedule: /hockey practice|hockey schedule|\btha\b|\bthai\b|sebastian(?:'s)? practice|nytex schedule|practice schedule|skating clinic|power skating|checking clinic/.test(lower),
       sms: /\btext\b|send a message|\bsms\b/.test(lower),
@@ -842,6 +847,79 @@ export default function App() {
       } catch (e) {
         console.error("Standings context failed:", e);
       }
+    }
+
+    const NBA_TEAM_ALIASES = [
+      ['dallas mavericks', 'mavericks', 'mavs'], ['los angeles lakers', 'lakers'],
+      ['boston celtics', 'celtics'], ['golden state warriors', 'warriors'],
+      ['milwaukee bucks', 'bucks'], ['miami heat', 'heat'], ['chicago bulls', 'bulls'],
+      ['new york knicks', 'knicks'], ['brooklyn nets', 'nets'],
+      ['cleveland cavaliers', 'cavaliers', 'cavs'], ['denver nuggets', 'nuggets'],
+      ['detroit pistons', 'pistons'], ['houston rockets', 'rockets'],
+      ['indiana pacers', 'pacers'], ['la clippers', 'clippers'],
+      ['memphis grizzlies', 'grizzlies', 'grizz'], ['new orleans pelicans', 'pelicans'],
+      ['oklahoma city thunder', 'thunder'], ['orlando magic', 'magic'],
+      ['philadelphia 76ers', '76ers', 'sixers'], ['phoenix suns', 'suns'],
+      ['portland trail blazers', 'trail blazers', 'blazers'], ['sacramento kings', 'kings'],
+      ['san antonio spurs', 'spurs'], ['toronto raptors', 'raptors'],
+      ['utah jazz', 'jazz'], ['washington wizards', 'wizards'],
+      ['charlotte hornets', 'hornets'], ['minnesota timberwolves', 'timberwolves', 'wolves'],
+      ['atlanta hawks', 'hawks'],
+    ];
+    const detectNBATeam = (q) => {
+      for (const aliases of NBA_TEAM_ALIASES) {
+        if (aliases.some((a) => q.includes(a))) return aliases[0];
+      }
+      return null;
+    };
+
+    if (intents.nbaLiveScore) {
+      try {
+        const teamName = detectNBATeam(lower);
+        if (teamName) {
+          const sc = await fetchJson(`/api/sports/nba/score?team=${encodeURIComponent(teamName)}`);
+          blocks.push(formatContextBlock("NBA Live Score", sc.live ? sc.summary : `No NBA game in progress for the ${teamName}.`));
+        }
+      } catch (e) { console.error("NBA live score context failed:", e); }
+    }
+
+    if (intents.nbаNextGame) {
+      try {
+        const teamName = detectNBATeam(lower);
+        if (teamName) {
+          const ng = await fetchJson(`/api/sports/nba/next-game?team=${encodeURIComponent(teamName)}`);
+          const homeAway = ng.home ? 'vs' : '@';
+          blocks.push(formatContextBlock("NBA Next Game", `${ng.team} ${homeAway} ${ng.opponent} on ${ng.date} at ${ng.venue}`));
+        }
+      } catch (e) { console.error("NBA next game context failed:", e); }
+    }
+
+    if (intents.nbaTeamRecord) {
+      try {
+        const teamName = detectNBATeam(lower);
+        if (teamName) {
+          const rec = await fetchJson(`/api/sports/nba/team-record?team=${encodeURIComponent(teamName)}`);
+          blocks.push(formatContextBlock("NBA Team Record", `${rec.team}: ${rec.wins}W-${rec.losses}L (.${Math.round((rec.pct || 0) * 1000)}) — ${rec.conference}`));
+        }
+      } catch (e) { console.error("NBA team record context failed:", e); }
+    }
+
+    if (intents.nbaLastGames) {
+      try {
+        const teamName = detectNBATeam(lower);
+        if (teamName) {
+          const lg = await fetchJson(`/api/sports/nba/last-games?team=${encodeURIComponent(teamName)}`);
+          blocks.push(formatContextBlock("NBA Last Games", (lg.lastGames || []).join(' | ') || 'No recent games'));
+        }
+      } catch (e) { console.error("NBA last games context failed:", e); }
+    }
+
+    if (intents.nbaStandings) {
+      try {
+        const st = await fetchJson('/api/sports/nba/standings');
+        const top5 = (st.standings || []).slice(0, 5);
+        blocks.push(formatContextBlock("NBA Standings (top 5)", top5.map(t => `${t.team} ${t.wins}-${t.losses}`).join(' | ')));
+      } catch (e) { console.error("NBA standings context failed:", e); }
     }
 
     if (!intents.nextGame && !intents.teamRecord && !intents.lastGames && !intents.standings && intents.sports) {
